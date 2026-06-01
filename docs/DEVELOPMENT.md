@@ -46,6 +46,20 @@ mipssf-k3.4/
 Workflow [../.github/workflows/pages.yml](../.github/workflows/pages.yml)
 публикует этот каталог через GitHub Pages после push в `master`.
 
+## Публикация opkg-feed
+
+Перед первым запуском workflow один раз включите GitHub Pages:
+
+1. Откройте `Settings -> Pages`.
+2. В разделе `Build and deployment` выберите `Source: GitHub Actions`.
+3. Повторно запустите workflow `Publish opkg feed`.
+
+После публикации установщик будет доступен по адресу:
+
+```text
+https://astronaut808.github.io/hrbridge/keenetic/install.sh
+```
+
 ## Ручная проверка бинаря на роутере
 
 Если OpenSSH на роутере не содержит SFTP server, используйте legacy SCP:
