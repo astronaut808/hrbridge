@@ -9,7 +9,7 @@ LDFLAGS = -s -w
 
 .PHONY: all clean native darwin aarch64 mipsel mips
 .PHONY: package package-aarch64 package-mipsel package-mips feed
-.PHONY: generate test lint ci shell-check smoke-local smoke-router smoke-router-write smoke-router-service smoke-router-rci
+.PHONY: generate fmt-check test lint ci shell-check smoke-local smoke-router smoke-router-write smoke-router-service smoke-router-rci
 
 all: aarch64 mipsel mips
 package: package-aarch64 package-mipsel package-mips
@@ -20,13 +20,20 @@ feed: package
 generate:
 	go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.7.0 --config api/oapi-codegen.types.yaml api/openapi.yaml
 
+fmt-check:
+	@test -z "$$(gofmt -l $$(find . -name '*.go' -not -path './build/*'))" || { \
+		echo "Go files must be formatted with gofmt:"; \
+		gofmt -l $$(find . -name '*.go' -not -path './build/*'); \
+		exit 1; \
+	}
+
 test:
 	$(GO) test ./...
 
 lint:
 	$(GO) run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION) run ./...
 
-ci: generate test native shell-check
+ci: generate fmt-check test native shell-check
 
 shell-check:
 	@for script in packaging/S99hrbridge scripts/*.sh; do \

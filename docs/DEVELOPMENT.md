@@ -11,9 +11,10 @@
 | Команда | Назначение |
 |---------|------------|
 | `make generate` | Обновить Go-модели из OpenAPI |
+| `make fmt-check` | Проверить форматирование Go-кода через `gofmt` |
 | `make test` | Запустить unit-тесты |
 | `make lint` | Запустить `golangci-lint v2.12.2` |
-| `make ci` | Выполнить codegen, тесты, native build и shell-check |
+| `make ci` | Выполнить codegen, fmt-check, тесты, native build и shell-check |
 | `make smoke-local` | Проверить локальный HTTP API |
 | `make aarch64` | Собрать Linux ARM64 бинарь |
 | `make mipsel` | Собрать Linux MIPS little-endian бинарь |
