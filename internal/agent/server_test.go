@@ -103,6 +103,9 @@ func TestCORSPreflight(t *testing.T) {
 	if got := rr.Header().Get("Access-Control-Allow-Origin"); got != "http://router.local" {
 		t.Fatalf("unexpected allow origin: %q", got)
 	}
+	if got := rr.Header().Get("Access-Control-Allow-Methods"); got != "GET, POST, PUT, DELETE, OPTIONS" {
+		t.Fatalf("unexpected allow methods: %q", got)
+	}
 }
 
 func TestConfigReadWriteCreatesBackup(t *testing.T) {
