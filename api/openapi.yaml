@@ -1,0 +1,2582 @@
+openapi: 3.0.3
+info:
+  title: HydraBridge API
+  version: 0.1.0
+  summary: Unified control API for HydraRoute Neo
+  description: |
+    HydraBridge is the control-plane API for HydraRoute Neo. It manages
+    configuration files, service lifecycle, backups, status, and logs for
+    clients such as iOS apps, web UIs, Telegram bots, CLIs, and automations.
+  x-supported-hrneo-version: 3.11.0-1
+servers:
+  - url: http://{host}/api/v1
+    variables:
+      host:
+        default: 192.168.1.1:2080
+security:
+  - bearerAuth: []
+tags:
+  - name: Health
+  - name: Version
+  - name: Status
+  - name: Compatibility
+  - name: Doctor
+  - name: Config
+  - name: Views
+  - name: Targets
+  - name: GeoData
+  - name: ImportExport
+  - name: Diagnostics
+  - name: Runtime
+  - name: Overview
+  - name: Auth
+  - name: Service
+  - name: Backups
+  - name: Logs
+  - name: Audit
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Public health check
+      security: []
+      responses:
+        "200":
+          description: HydraBridge is reachable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  /version:
+    get:
+      tags: [Version]
+      summary: Return HydraBridge and API version information
+      responses:
+        "200":
+          description: Version and capabilities
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /status:
+    get:
+      tags: [Status]
+      summary: Return aggregated HydraBridge and hrneo status
+      responses:
+        "200":
+          description: Current status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /compatibility:
+    get:
+      tags: [Compatibility]
+      summary: Check current files against supported HR Neo behavior
+      description: |
+        Returns a read-only compatibility report for HydraBridge's supported
+        HR Neo version. The report validates config syntax, highlights unknown
+        or missing keys, checks referenced GeoData files, and surfaces issues
+        that would be ignored or warned about by HR Neo at runtime.
+      responses:
+        "200":
+          description: Compatibility report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompatibilityReport"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /doctor:
+    get:
+      tags: [Doctor]
+      summary: Return an actionable router readiness report
+      responses:
+        "200":
+          description: Doctor report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DoctorReport"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /overview:
+    get:
+      tags: [Overview]
+      summary: Return dashboard summary for apps and bots
+      responses:
+        "200":
+          description: Overview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OverviewResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /auth/token/rotate:
+    post:
+      tags: [Auth]
+      summary: Rotate HydraBridge bearer token
+      responses:
+        "200":
+          description: New token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenRotateResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /config/{name}:
+    parameters:
+      - $ref: "#/components/parameters/ConfigName"
+    get:
+      tags: [Config]
+      summary: Read a HydraRoute config file as raw text
+      responses:
+        "200":
+          description: Config file content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConfigFileResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Config]
+      summary: Replace a HydraRoute config file
+      description: |
+        Writes raw content atomically after creating a backup. For JSON
+        requests, `apply=true` runs the required service action after saving.
+        `text/plain` bodies are accepted as raw content with `apply=false`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PutConfigRequest"
+          text/plain:
+            schema:
+              type: string
+      responses:
+        "200":
+          description: Config saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PutConfigResponse"
+        "202":
+          description: Config saved but apply action failed or is incomplete
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PutConfigResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "412":
+          $ref: "#/components/responses/PreconditionFailed"
+
+  /config/hrneo/structured:
+    get:
+      tags: [Config]
+      summary: Read hrneo.conf as structured key/value config
+      responses:
+        "200":
+          description: Structured hrneo.conf
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HRNeoConfigResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    put:
+      tags: [Config]
+      summary: Merge hrneo.conf from structured key/value config
+      description: |
+        Writes `hrneo.conf` atomically after creating a backup. Omitted fields
+        keep their current values, explicit empty arrays clear repeatable keys,
+        and unknown existing keys are preserved for forward compatibility.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PutHRNeoConfigRequest"
+      responses:
+        "200":
+          description: Config saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PutConfigResponse"
+        "202":
+          description: Config saved but apply action failed or is incomplete
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PutConfigResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "412":
+          $ref: "#/components/responses/PreconditionFailed"
+
+  /config/hrneo/default:
+    get:
+      tags: [Config]
+      summary: Preview the default hrneo.conf generated by HR Neo semantics
+      responses:
+        "200":
+          description: Default hrneo.conf preview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HRNeoDefaultConfigResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /config/hrneo/generate-default:
+    post:
+      tags: [Config]
+      summary: Replace hrneo.conf with HR Neo defaults
+      description: |
+        Replaces hrneo.conf with the same 27 default keys produced by
+        `hrneo --genconfig`, after creating a backup. Accepts `If-Match`.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateDefaultHRNeoConfigRequest"
+      responses:
+        "200":
+          description: Default config saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PutConfigResponse"
+        "202":
+          description: Default config saved but restart failed or is incomplete
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PutConfigResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "412":
+          $ref: "#/components/responses/PreconditionFailed"
+
+  /metadata/hrneo-params:
+    get:
+      tags: [Config]
+      summary: Return metadata for all HR Neo configuration parameters
+      responses:
+        "200":
+          description: HR Neo config parameter metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HRNeoParamMetadataResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /config/domains/structured:
+    get:
+      tags: [Config]
+      summary: Read domain.conf as structured targets
+      responses:
+        "200":
+          description: Structured domain.conf
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DomainConfigResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    put:
+      tags: [Config]
+      summary: Replace domain.conf from structured targets
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PutDomainConfigRequest"
+      responses:
+        "200":
+          description: Config saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PutConfigResponse"
+        "202":
+          description: Config saved but apply action failed or is incomplete
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PutConfigResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "412":
+          $ref: "#/components/responses/PreconditionFailed"
+
+  /config/domains/validate:
+    post:
+      tags: [Config]
+      summary: Validate domain.conf structure without saving it
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PutDomainConfigRequest"
+      responses:
+        "200":
+          description: Domain validation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /config/cidr/structured:
+    get:
+      tags: [Config]
+      summary: Read ip.list as structured CIDR blocks
+      responses:
+        "200":
+          description: Structured ip.list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CIDRConfigResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    put:
+      tags: [Config]
+      summary: Replace ip.list from structured CIDR blocks
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PutCIDRConfigRequest"
+      responses:
+        "200":
+          description: Config saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PutConfigResponse"
+        "202":
+          description: Config saved but apply action failed or is incomplete
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PutConfigResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "412":
+          $ref: "#/components/responses/PreconditionFailed"
+
+  /config/cidr/validate:
+    post:
+      tags: [Config]
+      summary: Validate ip.list structure without saving it
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PutCIDRConfigRequest"
+      responses:
+        "200":
+          description: CIDR validation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /diagnostics/domain:
+    post:
+      tags: [Diagnostics]
+      summary: Explain how HR Neo would route a domain
+      description: |
+        Uses HydraBridge's HR Neo-compatible parser and matching rules for
+        `domain.conf`: exact match, suffix match, specificity, and PolicyOrder.
+        GeoSite `.dat` expansion is reported separately by GeoData APIs and is
+        not expanded by this endpoint.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DomainDiagnosticRequest"
+      responses:
+        "200":
+          description: Domain diagnostic result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DomainDiagnosticResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /diagnostics/ip:
+    post:
+      tags: [Diagnostics]
+      summary: Explain how HR Neo would route an IP address
+      description: |
+        Combines matching static CIDR rules, configured GeoIP `.dat` prefixes,
+        live ipset membership, relevant firewall rules, and Keenetic policy
+        marks when those runtime sources are available. DNS/CNAME and L7
+        history are not fabricated because HR Neo does not expose durable
+        attribution for entries already present in ipsets.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IPDiagnosticRequest"
+      responses:
+        "200":
+          description: IP diagnostic result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IPDiagnosticResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /runtime/ipsets:
+    get:
+      tags: [Runtime]
+      summary: Return live ipset names and referenced target set status
+      responses:
+        "200":
+          description: Runtime ipset view
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RuntimeIPSetsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /runtime/firewall:
+    get:
+      tags: [Runtime]
+      summary: Return live iptables/ip6tables mangle rules relevant to HR Neo
+      responses:
+        "200":
+          description: Runtime firewall view
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RuntimeFirewallResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /runtime/policies:
+    get:
+      tags: [Runtime]
+      summary: Return live Keenetic policy marks from RCI
+      responses:
+        "200":
+          description: Runtime policy marks
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PoliciesResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /config/domains/targets/{target}/rules:
+    parameters:
+      - name: target
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      tags: [Config]
+      summary: Add one domain or GeoSite rule to a target
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DomainRulePatchRequest"
+      responses:
+        "200":
+          description: Rule added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PutConfigResponse"
+        "202":
+          description: Rule added but apply action failed or is incomplete
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PutConfigResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "412":
+          $ref: "#/components/responses/PreconditionFailed"
+    delete:
+      tags: [Config]
+      summary: Remove one domain or GeoSite rule from a target
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DomainRulePatchRequest"
+      responses:
+        "200":
+          description: Rule removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PutConfigResponse"
+        "202":
+          description: Rule removed but apply action failed or is incomplete
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PutConfigResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "412":
+          $ref: "#/components/responses/PreconditionFailed"
+
+  /config/cidr/targets/{target}/rules:
+    parameters:
+      - name: target
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      tags: [Config]
+      summary: Add one CIDR or GeoIP rule to a target
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CIDRRulePatchRequest"
+      responses:
+        "200":
+          description: Rule added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PutConfigResponse"
+        "202":
+          description: Rule added but apply action failed or is incomplete
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PutConfigResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "412":
+          $ref: "#/components/responses/PreconditionFailed"
+    delete:
+      tags: [Config]
+      summary: Remove one CIDR or GeoIP rule from a target
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CIDRRulePatchRequest"
+      responses:
+        "200":
+          description: Rule removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PutConfigResponse"
+        "202":
+          description: Rule removed but apply action failed or is incomplete
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PutConfigResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "412":
+          $ref: "#/components/responses/PreconditionFailed"
+
+  /views/domains/grouped:
+    get:
+      tags: [Views]
+      summary: Return domain.conf grouped by target for display
+      description: |
+        Read-only app-facing projection. Repeated target lines are aggregated
+        for display without changing the underlying HR Neo config file.
+      responses:
+        "200":
+          description: Grouped domain view
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupedDomainViewResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /views/cidr/grouped:
+    get:
+      tags: [Views]
+      summary: Return ip.list grouped by target for display
+      description: |
+        Read-only app-facing projection. Repeated target blocks are aggregated
+        for display without changing the underlying HR Neo config file.
+      responses:
+        "200":
+          description: Grouped CIDR view
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupedCIDRViewResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /runtime/direct-routes:
+    get:
+      tags: [Runtime]
+      summary: Return live Linux policy-routing state used by DirectRoute
+      responses:
+        "200":
+          description: Runtime DirectRoute view
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RuntimeDirectRoutesResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /service/{action}:
+    parameters:
+      - $ref: "#/components/parameters/ServiceAction"
+    post:
+      tags: [Service]
+      summary: Control hrneo service lifecycle
+      description: |
+        `reload` sends SIGUSR1 to the PID from `/var/run/hrneo.pid`.
+        `start`, `stop`, and `restart` call the configured init script.
+      responses:
+        "200":
+          description: Service action completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceActionResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /targets:
+    get:
+      tags: [Targets]
+      summary: Return routing targets referenced by HydraRoute configs
+      responses:
+        "200":
+          description: Target inventory
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TargetInventoryResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /targets/interfaces:
+    get:
+      tags: [Targets]
+      summary: Return system interfaces available for DirectRoute targets
+      responses:
+        "200":
+          description: Interface list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InterfacesResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /targets/policies:
+    get:
+      tags: [Targets]
+      summary: Return Keenetic policy targets from RCI
+      responses:
+        "200":
+          description: Policy list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PoliciesResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    post:
+      tags: [Targets]
+      summary: Create or ensure a Keenetic policy through RCI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PolicyMutationRequest"
+      responses:
+        "200":
+          description: Policy command executed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PolicyMutationResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /targets/policies/{name}:
+    parameters:
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+    delete:
+      tags: [Targets]
+      summary: Delete a Keenetic policy through RCI
+      description: |
+        Sends `no ip policy <name>` through Keenetic RCI and saves startup
+        configuration. Smoke-test this RCI command on target firmware when
+        upgrading beyond the documented HR Neo compatibility version.
+      responses:
+        "200":
+          description: Policy command executed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PolicyMutationResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /targets/order:
+    get:
+      tags: [Targets]
+      summary: Return configured target priority order
+      responses:
+        "200":
+          description: Target order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TargetOrderResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    put:
+      tags: [Targets]
+      summary: Replace PolicyOrder in hrneo.conf
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PutTargetOrderRequest"
+      responses:
+        "200":
+          description: Target order saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PutConfigResponse"
+        "202":
+          description: Target order saved but apply action failed or is incomplete
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PutConfigResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /geodata/files:
+    get:
+      tags: [GeoData]
+      summary: Return configured GeoIP and GeoSite file metadata
+      responses:
+        "200":
+          description: GeoData files
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeoDataFilesResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [GeoData]
+      summary: Upload a GeoIP or GeoSite .dat file from base64 content
+      description: The destination path must be inside the geofile directory next to hrneo.conf.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GeoDataUploadRequest"
+      responses:
+        "200":
+          description: GeoData file saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeoDataFileMutationResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /geodata/download:
+    post:
+      tags: [GeoData]
+      summary: Download a GeoIP or GeoSite .dat file from a URL
+      description: The HTTP(S) source must resolve to public IP addresses. Loopback, private, and link-local addresses are rejected.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GeoDataDownloadRequest"
+      responses:
+        "200":
+          description: GeoData file downloaded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeoDataFileMutationResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /geodata/references:
+    get:
+      tags: [GeoData]
+      summary: Return GeoIP and GeoSite tags referenced by current configs
+      responses:
+        "200":
+          description: Referenced GeoData tags
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeoDataReferencesResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /geodata/tags:
+    get:
+      tags: [GeoData]
+      summary: Return exact tags indexed from configured GeoData files
+      responses:
+        "200":
+          description: GeoData tags
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeoDataTagsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /geodata/validate:
+    get:
+      tags: [GeoData]
+      summary: Validate configured GeoData files and tag references
+      responses:
+        "200":
+          description: GeoData validation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [GeoData]
+      summary: Validate configured GeoData files and tag references
+      responses:
+        "200":
+          description: GeoData validation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /export/csv:
+    get:
+      tags: [ImportExport]
+      summary: Export domain.conf and ip.list as CSV
+      responses:
+        "200":
+          description: CSV export
+          content:
+            text/csv:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /import/csv/preview:
+    post:
+      tags: [ImportExport]
+      summary: Parse CSV import without saving it
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportCSVRequest"
+      responses:
+        "200":
+          description: Parsed CSV preview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportCSVPreviewResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /import/csv/apply:
+    post:
+      tags: [ImportExport]
+      summary: Import CSV into domain.conf and ip.list
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportCSVRequest"
+      responses:
+        "200":
+          description: CSV imported
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportCSVApplyResponse"
+        "202":
+          description: CSV imported but apply action failed or is incomplete
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportCSVApplyResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /imports/text/preview:
+    post:
+      tags: [ImportExport]
+      summary: Preview importing pasted domain or CIDR lines into one target
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportTextRequest"
+      responses:
+        "200":
+          description: Text import preview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportCSVPreviewResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /imports/text/apply:
+    post:
+      tags: [ImportExport]
+      summary: Apply importing pasted domain or CIDR lines into one target
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportTextRequest"
+      responses:
+        "200":
+          description: Text import applied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportCSVApplyResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /backups:
+    get:
+      tags: [Backups]
+      summary: List config backups
+      responses:
+        "200":
+          description: Backup list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [backups]
+                properties:
+                  backups:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/BackupInfo"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [Backups]
+      summary: Create a manual config backup
+      responses:
+        "200":
+          description: Backup created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BackupInfo"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /backups/restore:
+    post:
+      tags: [Backups]
+      summary: Restore a config backup
+      description: Creates a safety backup before restoring selected backup files.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RestoreBackupRequest"
+      responses:
+        "200":
+          description: Backup restored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RestoreBackupResponse"
+        "202":
+          description: Backup restored but apply action failed or is incomplete
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RestoreBackupResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /logs:
+    get:
+      tags: [Logs]
+      summary: Return tail of configured hrneo log file
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 300
+            minimum: 1
+            maximum: 5000
+      responses:
+        "200":
+          description: Log lines
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LogsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /audit:
+    get:
+      tags: [Audit]
+      summary: Return recent HydraBridge audit events
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 100
+            minimum: 1
+            maximum: 1000
+      responses:
+        "200":
+          description: Audit events
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditEventsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque-token
+
+  parameters:
+    ConfigName:
+      name: name
+      in: path
+      required: true
+      schema:
+        type: string
+        enum: [hrneo, domains, cidr]
+      description: |
+        `hrneo` maps to `hrneo.conf`, `domains` maps to `domain.conf`,
+        and `cidr` maps to `ip.list`.
+    ServiceAction:
+      name: action
+      in: path
+      required: true
+      schema:
+        type: string
+        enum: [start, stop, restart, reload]
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Missing bearer token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Invalid bearer token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    PreconditionFailed:
+      description: Config revision precondition failed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    HealthResponse:
+      type: object
+      required: [ok, service]
+      properties:
+        ok:
+          type: boolean
+        service:
+          type: string
+          enum: [HydraBridge]
+
+    VersionResponse:
+      type: object
+      required: [agentVersion, apiVersion, capabilities]
+      properties:
+        agentVersion:
+          type: string
+          example: 0.1.0
+        apiVersion:
+          type: string
+          example: v1
+        capabilities:
+          type: array
+          items:
+            type: string
+          example:
+            - config.raw
+            - service.control
+            - backup.create
+            - logs.read
+            - status.hrneo
+
+    StatusResponse:
+      type: object
+      required: [hrbridge, hrneo, paths]
+      properties:
+        hrbridge:
+          type: object
+          required: [version, uptimeSec]
+          properties:
+            version:
+              type: string
+            uptimeSec:
+              type: integer
+              format: int64
+        hrneo:
+          $ref: "#/components/schemas/HRNeoStatus"
+        paths:
+          type: object
+          required: [hrneoConf, domainConf, cidrList, backupDir, auditLog]
+          properties:
+            hrneoConf:
+              type: string
+            domainConf:
+              type: string
+            cidrList:
+              type: string
+            backupDir:
+              type: string
+            auditLog:
+              type: string
+
+    HRNeoStatus:
+      type: object
+      required: [installed, running]
+      properties:
+        installed:
+          type: boolean
+        running:
+          type: boolean
+        pid:
+          type: integer
+        version:
+          type: string
+          example: hrneo v3.11.0-1
+        uptimeSec:
+          type: integer
+          format: int64
+
+    OverviewResponse:
+      type: object
+      required: [ok, status, targetCount, domainRuleCount, cidrRuleCount, warningCount, errorCount]
+      properties:
+        ok:
+          type: boolean
+        status:
+          $ref: "#/components/schemas/StatusResponse"
+        targetCount:
+          type: integer
+        domainRuleCount:
+          type: integer
+        cidrRuleCount:
+          type: integer
+        warningCount:
+          type: integer
+        errorCount:
+          type: integer
+
+    TokenRotateResponse:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+
+    ConfigFileResponse:
+      type: object
+      required: [name, path, content, exists]
+      properties:
+        name:
+          type: string
+          enum: [hrneo, domains, cidr]
+        path:
+          type: string
+          description: Destination inside the geofile directory next to hrneo.conf.
+        content:
+          type: string
+        exists:
+          type: boolean
+        requiredAction:
+          type: string
+          enum: [none, restart, reload]
+
+    PutConfigRequest:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+        apply:
+          type: boolean
+          default: false
+
+    ConfigRevision:
+      type: object
+      required: [revision]
+      properties:
+        revision:
+          type: string
+
+    PutConfigResponse:
+      type: object
+      required: [saved, backup, requiredAction, applied]
+      properties:
+        saved:
+          type: boolean
+        backup:
+          $ref: "#/components/schemas/BackupInfo"
+        requiredAction:
+          type: string
+          enum: [restart, reload, none]
+        applied:
+          type: boolean
+        applyOutput:
+          type: string
+
+    HRNeoConfigResponse:
+      type: object
+      required: [path, config]
+      properties:
+        path:
+          type: string
+        config:
+          $ref: "#/components/schemas/HRNeoConfig"
+        unknown:
+          type: object
+          additionalProperties:
+            type: string
+
+    PutHRNeoConfigRequest:
+      type: object
+      required: [config]
+      properties:
+        config:
+          $ref: "#/components/schemas/HRNeoConfig"
+        apply:
+          type: boolean
+          default: false
+
+    GenerateDefaultHRNeoConfigRequest:
+      type: object
+      properties:
+        apply:
+          type: boolean
+          default: false
+
+    HRNeoDefaultConfigResponse:
+      type: object
+      required: [content, config, requiredAction]
+      properties:
+        content:
+          type: string
+        config:
+          $ref: "#/components/schemas/HRNeoConfig"
+        requiredAction:
+          type: string
+          enum: [restart]
+
+    HRNeoParamMetadataResponse:
+      type: object
+      required: [supportedHrneoVersion, params]
+      properties:
+        supportedHrneoVersion:
+          type: string
+        params:
+          type: array
+          items:
+            $ref: "#/components/schemas/HRNeoParamMetadata"
+
+    HRNeoParamMetadata:
+      type: object
+      required: [name, cliFlag, valueType, repeatable, defaultValue, description, requiredAction]
+      properties:
+        name:
+          type: string
+        cliFlag:
+          type: string
+        valueType:
+          type: string
+          enum: [bool, int, positiveInt, string, path, repeatPath, policyOrder]
+        repeatable:
+          type: boolean
+        defaultValue:
+          type: string
+        description:
+          type: string
+        requiredAction:
+          type: string
+          enum: [restart]
+
+    HRNeoConfig:
+      type: object
+      properties:
+        autoStart:
+          type: boolean
+        watchlistPath:
+          type: string
+        clearIPSet:
+          type: boolean
+        CIDR:
+          type: boolean
+        CIDRfile:
+          type: string
+        IpsetEnableTimeout:
+          type: boolean
+        IpsetTimeout:
+          type: integer
+        log:
+          type: string
+          enum: [console, file, syslog, off]
+        logfile:
+          type: string
+        DirectRouteEnabled:
+          type: boolean
+        InterfaceFwMarkStart:
+          type: integer
+        InterfaceTableStart:
+          type: integer
+        GlobalRouting:
+          type: boolean
+        ConntrackFlush:
+          type: boolean
+        IpsetMaxElem:
+          type: integer
+        GeoIPFile:
+          type: array
+          items:
+            type: string
+        GeoSiteFile:
+          type: array
+          items:
+            type: string
+        PolicyOrder:
+          type: array
+          items:
+            type: string
+        l7CaptureEnabled:
+          type: boolean
+        l7QueueNum:
+          type: integer
+        l7EnableTLS:
+          type: boolean
+        l7EnableHTTP:
+          type: boolean
+        l7WanInterface:
+          type: string
+        l7ConnbytesMax:
+          type: integer
+        l7TcpReasmEnabled:
+          type: boolean
+        l7TcpReasmMaxEntries:
+          type: integer
+        l7TcpReasmTtlSec:
+          type: integer
+
+    GeoDataKind:
+      type: string
+      enum: [geoip, geosite]
+
+    GeoDataFileInfo:
+      type: object
+      required: [kind, path, configured, exists]
+      properties:
+        kind:
+          $ref: "#/components/schemas/GeoDataKind"
+        path:
+          type: string
+        configured:
+          type: boolean
+        exists:
+          type: boolean
+        size:
+          type: integer
+          format: int64
+        modified:
+          type: string
+          format: date-time
+        sha256:
+          type: string
+
+    GeoDataFilesResponse:
+      type: object
+      required: [files]
+      properties:
+        files:
+          type: array
+          items:
+            $ref: "#/components/schemas/GeoDataFileInfo"
+
+    GeoDataReferencesResponse:
+      type: object
+      required: [geoip, geosite]
+      properties:
+        geoip:
+          type: array
+          items:
+            type: string
+        geosite:
+          type: array
+          items:
+            type: string
+
+    GeoDataTagsResponse:
+      type: object
+      required: [geoip, geosite]
+      properties:
+        geoip:
+          type: array
+          items:
+            type: string
+        geosite:
+          type: array
+          items:
+            type: string
+
+    GeoDataUploadRequest:
+      type: object
+      required: [kind, path, contentBase64]
+      properties:
+        kind:
+          $ref: "#/components/schemas/GeoDataKind"
+        path:
+          type: string
+        contentBase64:
+          type: string
+        addToConfig:
+          type: boolean
+          default: true
+
+    GeoDataDownloadRequest:
+      type: object
+      required: [kind, path, url]
+      properties:
+        kind:
+          $ref: "#/components/schemas/GeoDataKind"
+        path:
+          type: string
+          description: Destination inside the geofile directory next to hrneo.conf.
+        url:
+          type: string
+          description: HTTP(S) URL resolving to public IP addresses.
+        sha256:
+          type: string
+        addToConfig:
+          type: boolean
+          default: true
+
+    GeoDataFileMutationResponse:
+      type: object
+      required: [saved, file]
+      properties:
+        saved:
+          type: boolean
+        file:
+          $ref: "#/components/schemas/GeoDataFileInfo"
+        configUpdated:
+          type: boolean
+
+    ImportCSVRequest:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+        apply:
+          type: boolean
+          default: false
+
+    ImportTextRequest:
+      type: object
+      required: [section, target, content]
+      properties:
+        section:
+          type: string
+          enum: [domain, cidr]
+        target:
+          type: string
+        content:
+          type: string
+        enabled:
+          type: boolean
+          default: true
+        apply:
+          type: boolean
+          default: false
+
+    ImportCSVPreviewResponse:
+      type: object
+      required: [domains, cidr, domainValidation, cidrValidation]
+      properties:
+        domains:
+          $ref: "#/components/schemas/DomainConfig"
+        cidr:
+          $ref: "#/components/schemas/CIDRConfig"
+        domainValidation:
+          $ref: "#/components/schemas/ValidationResponse"
+        cidrValidation:
+          $ref: "#/components/schemas/ValidationResponse"
+
+    ImportCSVApplyResponse:
+      type: object
+      required: [saved, backup, requiredAction, applied, preview]
+      properties:
+        saved:
+          type: boolean
+        backup:
+          $ref: "#/components/schemas/BackupInfo"
+        requiredAction:
+          type: string
+          enum: [restart]
+        applied:
+          type: boolean
+        applyOutput:
+          type: string
+        preview:
+          $ref: "#/components/schemas/ImportCSVPreviewResponse"
+
+    DomainConfigResponse:
+      type: object
+      required: [path, config]
+      properties:
+        path:
+          type: string
+        config:
+          $ref: "#/components/schemas/DomainConfig"
+
+    PutDomainConfigRequest:
+      type: object
+      required: [config]
+      properties:
+        config:
+          $ref: "#/components/schemas/DomainConfig"
+        apply:
+          type: boolean
+          default: false
+
+    DomainConfig:
+      type: object
+      required: [targets]
+      properties:
+        targets:
+          type: array
+          items:
+            $ref: "#/components/schemas/DomainTarget"
+
+    DomainTarget:
+      type: object
+      required: [name, enabled, domains, geosite]
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [unknown, policy, interface]
+          default: unknown
+        enabled:
+          type: boolean
+        comment:
+          type: string
+        domains:
+          type: array
+          items:
+            type: string
+        geosite:
+          type: array
+          items:
+            type: string
+
+    DomainRulePatchRequest:
+      type: object
+      required: [kind, value]
+      properties:
+        kind:
+          type: string
+          enum: [domain, geosite]
+        value:
+          type: string
+        apply:
+          type: boolean
+          default: false
+
+    CIDRConfigResponse:
+      type: object
+      required: [path, config]
+      properties:
+        path:
+          type: string
+        config:
+          $ref: "#/components/schemas/CIDRConfig"
+
+    PutCIDRConfigRequest:
+      type: object
+      required: [config]
+      properties:
+        config:
+          $ref: "#/components/schemas/CIDRConfig"
+        apply:
+          type: boolean
+          default: false
+
+    CIDRConfig:
+      type: object
+      required: [blocks]
+      properties:
+        blocks:
+          type: array
+          items:
+            $ref: "#/components/schemas/CIDRBlock"
+
+    CIDRBlock:
+      type: object
+      required: [target, enabled, entries, geoip]
+      properties:
+        target:
+          type: string
+        enabled:
+          type: boolean
+        comment:
+          type: string
+        entries:
+          type: array
+          items:
+            type: string
+        geoip:
+          type: array
+          items:
+            type: string
+
+    CIDRRulePatchRequest:
+      type: object
+      required: [kind, value]
+      properties:
+        kind:
+          type: string
+          enum: [cidr, geoip]
+        value:
+          type: string
+        apply:
+          type: boolean
+          default: false
+
+    GroupedDomainViewResponse:
+      type: object
+      required: [path, targets]
+      properties:
+        path:
+          type: string
+        targets:
+          type: array
+          items:
+            $ref: "#/components/schemas/GroupedDomainTarget"
+
+    GroupedDomainTarget:
+      type: object
+      required: [name, enabled, domains, geosite, groups]
+      properties:
+        name:
+          type: string
+        enabled:
+          type: boolean
+          description: True when at least one source group is enabled.
+        domains:
+          type: array
+          description: Unique domains aggregated from all source groups.
+          items:
+            type: string
+        geosite:
+          type: array
+          description: Unique GeoSite tags aggregated from all source groups.
+          items:
+            type: string
+        groups:
+          type: array
+          description: Parsed HR Neo source groups in file order.
+          items:
+            $ref: "#/components/schemas/DomainTarget"
+
+    GroupedCIDRViewResponse:
+      type: object
+      required: [path, targets]
+      properties:
+        path:
+          type: string
+        targets:
+          type: array
+          items:
+            $ref: "#/components/schemas/GroupedCIDRTarget"
+
+    GroupedCIDRTarget:
+      type: object
+      required: [target, enabled, entries, geoip, blocks]
+      properties:
+        target:
+          type: string
+        enabled:
+          type: boolean
+          description: True when at least one source block is enabled.
+        entries:
+          type: array
+          description: Unique CIDR entries aggregated from all source blocks.
+          items:
+            type: string
+        geoip:
+          type: array
+          description: Unique GeoIP tags aggregated from all source blocks.
+          items:
+            type: string
+        blocks:
+          type: array
+          description: Parsed HR Neo source blocks in file order.
+          items:
+            $ref: "#/components/schemas/CIDRBlock"
+
+    ValidationResponse:
+      type: object
+      required: [ok, issues]
+      properties:
+        ok:
+          type: boolean
+        issues:
+          type: array
+          items:
+            $ref: "#/components/schemas/ValidationIssue"
+
+    ValidationIssue:
+      type: object
+      required: [severity, code, message]
+      properties:
+        severity:
+          type: string
+          enum: [error, warning]
+        code:
+          type: string
+          example: duplicate-domain
+        message:
+          type: string
+        target:
+          type: string
+        path:
+          type: string
+
+    DoctorReport:
+      type: object
+      required: [ok, checks]
+      properties:
+        ok:
+          type: boolean
+        checks:
+          type: array
+          items:
+            $ref: "#/components/schemas/DoctorCheck"
+
+    DoctorCheck:
+      type: object
+      required: [severity, component, code, message]
+      properties:
+        severity:
+          type: string
+          enum: [ok, warning, error]
+        component:
+          type: string
+        code:
+          type: string
+        message:
+          type: string
+        detail:
+          type: string
+
+    CompatibilityReport:
+      type: object
+      required: [ok, supportedHrneoVersion, checks]
+      properties:
+        ok:
+          type: boolean
+        supportedHrneoVersion:
+          type: string
+          example: 3.11.0-1
+        checks:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompatibilityCheck"
+
+    CompatibilityCheck:
+      type: object
+      required: [severity, component, code, message]
+      properties:
+        severity:
+          type: string
+          enum: [ok, warning, error]
+        component:
+          type: string
+          enum: [hrneo, domains, cidr, geodata, bridge]
+        code:
+          type: string
+          example: unknown-hrneo-key
+        message:
+          type: string
+        path:
+          type: string
+        target:
+          type: string
+
+    DomainDiagnosticRequest:
+      type: object
+      required: [domain]
+      properties:
+        domain:
+          type: string
+          example: www.youtube.com
+
+    DomainDiagnosticResponse:
+      type: object
+      required: [domain, matched, candidates, targetOrder, notes]
+      properties:
+        domain:
+          type: string
+        matched:
+          type: boolean
+        target:
+          type: string
+        matchedDomain:
+          type: string
+        matchType:
+          type: string
+          enum: [exact, suffix]
+        candidates:
+          type: array
+          items:
+            $ref: "#/components/schemas/DomainDiagnosticCandidate"
+        targetOrder:
+          type: array
+          items:
+            type: string
+        notes:
+          type: array
+          items:
+            type: string
+
+    DomainDiagnosticCandidate:
+      type: object
+      required: [target, rule, matchType, priority, specificity]
+      properties:
+        target:
+          type: string
+        rule:
+          type: string
+        matchType:
+          type: string
+          enum: [exact, suffix]
+        priority:
+          type: integer
+        specificity:
+          type: integer
+
+    IPDiagnosticRequest:
+      type: object
+      required: [ip]
+      properties:
+        ip:
+          type: string
+          example: 1.1.1.1
+
+    IPDiagnosticResponse:
+      type: object
+      required: [ip, matched, candidates, geoipMatches, runtime, targetOrder, notes]
+      properties:
+        ip:
+          type: string
+        matched:
+          type: boolean
+        target:
+          type: string
+        prefix:
+          type: string
+        candidates:
+          type: array
+          items:
+            $ref: "#/components/schemas/IPDiagnosticCandidate"
+        geoipMatches:
+          type: array
+          items:
+            $ref: "#/components/schemas/IPDiagnosticGeoIPMatch"
+        runtime:
+          $ref: "#/components/schemas/IPDiagnosticRuntimeEvidence"
+        targetOrder:
+          type: array
+          items:
+            type: string
+        notes:
+          type: array
+          items:
+            type: string
+
+    IPDiagnosticCandidate:
+      type: object
+      required: [target, prefix, priority, prefixBits]
+      properties:
+        target:
+          type: string
+        prefix:
+          type: string
+        priority:
+          type: integer
+        prefixBits:
+          type: integer
+
+    IPDiagnosticGeoIPMatch:
+      type: object
+      required: [target, tag, prefix, priority, prefixBits]
+      properties:
+        target:
+          type: string
+        tag:
+          type: string
+        prefix:
+          type: string
+        priority:
+          type: integer
+        prefixBits:
+          type: integer
+
+    IPDiagnosticRuntimeEvidence:
+      type: object
+      required: [ipsetAvailable, policyMarksAvailable, firewallAvailable, family, matched, memberships, errors]
+      properties:
+        ipsetAvailable:
+          type: boolean
+        policyMarksAvailable:
+          type: boolean
+        firewallAvailable:
+          type: boolean
+        family:
+          type: string
+          enum: [ipv4, ipv6]
+        matched:
+          type: boolean
+        target:
+          type: string
+        setName:
+          type: string
+        policyMark:
+          type: string
+        memberships:
+          type: array
+          items:
+            $ref: "#/components/schemas/IPDiagnosticIPSetMembership"
+        errors:
+          type: array
+          items:
+            type: string
+
+    IPDiagnosticIPSetMembership:
+      type: object
+      required: [target, setName, priority, exists, member, firewallRules]
+      properties:
+        target:
+          type: string
+        setName:
+          type: string
+        priority:
+          type: integer
+        exists:
+          type: boolean
+        member:
+          type: boolean
+        policyMark:
+          type: string
+        firewallRules:
+          type: array
+          items:
+            type: string
+
+    RuntimeIPSetsResponse:
+      type: object
+      required: [available, sets, referencedSets]
+      properties:
+        available:
+          type: boolean
+        error:
+          type: string
+        sets:
+          type: array
+          items:
+            type: string
+        referencedSets:
+          type: array
+          items:
+            $ref: "#/components/schemas/RuntimeIPSetInfo"
+
+    RuntimeIPSetInfo:
+      type: object
+      required: [name, exists]
+      properties:
+        name:
+          type: string
+        exists:
+          type: boolean
+
+    RuntimeFirewallResponse:
+      type: object
+      required: [ipv4Available, ipv6Available, ipv4Rules, ipv6Rules]
+      properties:
+        ipv4Available:
+          type: boolean
+        ipv6Available:
+          type: boolean
+        ipv4Error:
+          type: string
+        ipv6Error:
+          type: string
+        ipv4Rules:
+          type: array
+          items:
+            type: string
+        ipv6Rules:
+          type: array
+          items:
+            type: string
+
+    RuntimeDirectRoutesResponse:
+      type: object
+      required: [interfaces, ipv4Rules, ipv6Rules]
+      properties:
+        interfaces:
+          type: array
+          items:
+            $ref: "#/components/schemas/InterfaceInfo"
+        ipv4Rules:
+          type: array
+          items:
+            type: string
+        ipv6Rules:
+          type: array
+          items:
+            type: string
+        ipv4Error:
+          type: string
+        ipv6Error:
+          type: string
+
+    TargetInventoryResponse:
+      type: object
+      required: [targets, order]
+      properties:
+        targets:
+          type: array
+          items:
+            $ref: "#/components/schemas/TargetInfo"
+        order:
+          type: array
+          items:
+            type: string
+
+    InterfacesResponse:
+      type: object
+      required: [interfaces]
+      properties:
+        interfaces:
+          type: array
+          items:
+            $ref: "#/components/schemas/InterfaceInfo"
+
+    InterfaceInfo:
+      type: object
+      required: [name, state]
+      properties:
+        name:
+          type: string
+        state:
+          type: string
+          enum: [up, down, unknown]
+        addresses:
+          type: array
+          items:
+            type: string
+
+    PoliciesResponse:
+      type: object
+      required: [policies]
+      properties:
+        policies:
+          type: array
+          items:
+            $ref: "#/components/schemas/PolicyInfo"
+
+    PolicyInfo:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        mark:
+          type: string
+
+    PolicyMutationRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        save:
+          type: boolean
+          default: true
+
+    PolicyMutationResponse:
+      type: object
+      required: [ok, command, saved]
+      properties:
+        ok:
+          type: boolean
+        command:
+          type: string
+        saved:
+          type: boolean
+        output:
+          type: string
+
+    TargetInfo:
+      type: object
+      required: [name, type, sources, domainRules, cidrRules]
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [unknown, policy, interface]
+        sources:
+          type: array
+          items:
+            type: string
+            enum: [domain, cidr, policyOrder]
+        domainRules:
+          type: integer
+        cidrRules:
+          type: integer
+        enabled:
+          type: boolean
+        interfaceState:
+          type: string
+          enum: [up, down, unknown]
+
+    TargetOrderResponse:
+      type: object
+      required: [order]
+      properties:
+        order:
+          type: array
+          items:
+            type: string
+
+    PutTargetOrderRequest:
+      type: object
+      required: [order]
+      properties:
+        order:
+          type: array
+          items:
+            type: string
+        apply:
+          type: boolean
+          default: false
+
+    BackupInfo:
+      type: object
+      required: [id, files, created]
+      properties:
+        id:
+          type: string
+          example: 20260527T120000Z-before-domains-write
+        files:
+          type: array
+          items:
+            type: string
+          example: [domain.conf, hrneo.conf, ip.list]
+        created:
+          type: string
+          format: date-time
+
+    RestoreBackupRequest:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: string
+        apply:
+          type: boolean
+          default: false
+
+    RestoreBackupResponse:
+      type: object
+      required: [restored, safetyBackup, requiredAction, applied]
+      properties:
+        restored:
+          type: array
+          items:
+            type: string
+        safetyBackup:
+          $ref: "#/components/schemas/BackupInfo"
+        requiredAction:
+          type: string
+          enum: [restart]
+        applied:
+          type: boolean
+        applyOutput:
+          type: string
+
+    ServiceActionResponse:
+      type: object
+      required: [action, ok, output, status]
+      properties:
+        action:
+          type: string
+          enum: [start, stop, restart, reload]
+        ok:
+          type: boolean
+        output:
+          type: string
+        status:
+          $ref: "#/components/schemas/HRNeoStatus"
+
+    LogsResponse:
+      type: object
+      required: [path, lines]
+      properties:
+        path:
+          type: string
+        lines:
+          type: array
+          items:
+            type: string
+
+    AuditEventsResponse:
+      type: object
+      required: [path, events]
+      properties:
+        path:
+          type: string
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuditEvent"
+
+    AuditEvent:
+      type: object
+      required: [time, action, ok]
+      properties:
+        time:
+          type: string
+          format: date-time
+        action:
+          type: string
+          example: config.write
+        ok:
+          type: boolean
+        target:
+          type: string
+          example: domains
+        backupId:
+          type: string
+        error:
+          type: string
+        remote:
+          type: string

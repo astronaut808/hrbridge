@@ -1,0 +1,8 @@
+Package: hrbridge
+Version: @VERSION@
+Architecture: @ARCH@
+Maintainer: astronaut808
+Section: net
+Priority: optional
+Depends: hrneo
+Description: Unified HTTP control API for HydraRoute Neo.
