@@ -22,6 +22,14 @@ The complete machine-readable contract is available in
 Config reads return `ETag` and `X-Config-Revision`. Send `If-Match` with writes
 to avoid overwriting another client update.
 
+Rule creation uses a JSON request body. Rule deletion uses OpenAPI 3.0
+compatible `kind` and `value` query parameters:
+
+```text
+DELETE /config/domains/targets/{target}/rules?kind={kind}&value={value}
+DELETE /config/cidr/targets/{target}/rules?kind={kind}&value={value}
+```
+
 GeoData uploads are limited to the `geofile` directory next to `hrneo.conf`.
 GeoData downloads accept HTTP(S) sources that resolve to public IP addresses.
 

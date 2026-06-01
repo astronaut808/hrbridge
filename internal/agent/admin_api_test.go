@@ -78,8 +78,7 @@ func TestPatchDomainAndCIDRRules(t *testing.T) {
 		t.Fatalf("domain patch not persisted: %q", string(data))
 	}
 
-	body, _ = json.Marshal(openapi.DomainRulePatchRequest{Kind: openapi.DomainRulePatchRequestKindDomain, Value: "new.example"})
-	rr = perform(srv, "DELETE", "/api/v1/config/domains/targets/HydraRoute/rules", "test-token", body)
+	rr = perform(srv, "DELETE", "/api/v1/config/domains/targets/HydraRoute/rules?kind=domain&value=new.example", "test-token", nil)
 	if rr.Code != http.StatusOK {
 		t.Fatalf("domain delete status=%d body=%s", rr.Code, rr.Body.String())
 	}
@@ -97,10 +96,19 @@ func TestPatchDomainAndCIDRRules(t *testing.T) {
 		t.Fatalf("cidr patch not persisted: %q", string(data))
 	}
 
-	body, _ = json.Marshal(openapi.CIDRRulePatchRequest{Kind: openapi.CIDRRulePatchRequestKindCidr, Value: "8.8.8.8/32"})
-	rr = perform(srv, "DELETE", "/api/v1/config/cidr/targets/HydraRoute/rules", "test-token", body)
+	rr = perform(srv, "DELETE", "/api/v1/config/cidr/targets/HydraRoute/rules?kind=cidr&value=8.8.8.8%2F32", "test-token", nil)
 	if rr.Code != http.StatusOK {
 		t.Fatalf("cidr delete status=%d body=%s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestDeleteRuleAcceptsLegacyJSONBody(t *testing.T) {
+	srv, _ := testServer(t)
+
+	body, _ := json.Marshal(openapi.DomainRulePatchRequest{Kind: openapi.DomainRulePatchRequestKindDomain, Value: "example.com"})
+	rr := perform(srv, "DELETE", "/api/v1/config/domains/targets/HydraRoute/rules", "test-token", body)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("legacy domain delete status=%d body=%s", rr.Code, rr.Body.String())
 	}
 }
 

@@ -2,7 +2,9 @@ openapi: 3.0.3
 info:
   title: HydraBridge API
   version: 0.1.0
-  summary: Unified control API for HydraRoute Neo
+  license:
+    name: MIT
+    url: https://opensource.org/license/mit
   description: |
     HydraBridge is the control-plane API for HydraRoute Neo. It manages
     configuration files, service lifecycle, backups, status, and logs for
@@ -616,12 +618,24 @@ paths:
     delete:
       tags: [Config]
       summary: Remove one domain or GeoSite rule from a target
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/DomainRulePatchRequest"
+      parameters:
+        - name: kind
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [domain, geosite]
+        - name: value
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: apply
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
       responses:
         "200":
           description: Rule removed
@@ -684,12 +698,24 @@ paths:
     delete:
       tags: [Config]
       summary: Remove one CIDR or GeoIP rule from a target
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CIDRRulePatchRequest"
+      parameters:
+        - name: kind
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [cidr, geoip]
+        - name: value
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: apply
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
       responses:
         "200":
           description: Rule removed

@@ -36,9 +36,14 @@ GET|PUT /api/v1/config/cidr/structured
 Точечные patches:
 
 ```text
-POST|DELETE /api/v1/config/domains/targets/{target}/rules
-POST|DELETE /api/v1/config/cidr/targets/{target}/rules
+POST   /api/v1/config/domains/targets/{target}/rules
+DELETE /api/v1/config/domains/targets/{target}/rules?kind={kind}&value={value}
+POST   /api/v1/config/cidr/targets/{target}/rules
+DELETE /api/v1/config/cidr/targets/{target}/rules?kind={kind}&value={value}
 ```
+
+`POST` принимает JSON body. `DELETE` использует query-параметры, совместимые с
+OpenAPI 3.0 и Swagger Editor.
 
 Чтение конфигов возвращает `ETag` и `X-Config-Revision`. Для записи передавайте
 `If-Match`, чтобы не перезаписать изменения другого клиента.

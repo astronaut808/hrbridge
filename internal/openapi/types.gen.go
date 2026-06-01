@@ -550,19 +550,19 @@ func (e ValidationIssueSeverity) Valid() bool {
 
 // Defines values for ConfigName.
 const (
-	Cidr    ConfigName = "cidr"
-	Domains ConfigName = "domains"
-	Hrneo   ConfigName = "hrneo"
+	ConfigNameCidr    ConfigName = "cidr"
+	ConfigNameDomains ConfigName = "domains"
+	ConfigNameHrneo   ConfigName = "hrneo"
 )
 
 // Valid indicates whether the value is a known member of the ConfigName enum.
 func (e ConfigName) Valid() bool {
 	switch e {
-	case Cidr:
+	case ConfigNameCidr:
 		return true
-	case Domains:
+	case ConfigNameDomains:
 		return true
-	case Hrneo:
+	case ConfigNameHrneo:
 		return true
 	default:
 		return false
@@ -587,6 +587,42 @@ func (e ServiceAction) Valid() bool {
 	case ServiceActionStart:
 		return true
 	case ServiceActionStop:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteConfigCidrTargetsTargetRulesParamsKind.
+const (
+	DeleteConfigCidrTargetsTargetRulesParamsKindCidr  DeleteConfigCidrTargetsTargetRulesParamsKind = "cidr"
+	DeleteConfigCidrTargetsTargetRulesParamsKindGeoip DeleteConfigCidrTargetsTargetRulesParamsKind = "geoip"
+)
+
+// Valid indicates whether the value is a known member of the DeleteConfigCidrTargetsTargetRulesParamsKind enum.
+func (e DeleteConfigCidrTargetsTargetRulesParamsKind) Valid() bool {
+	switch e {
+	case DeleteConfigCidrTargetsTargetRulesParamsKindCidr:
+		return true
+	case DeleteConfigCidrTargetsTargetRulesParamsKindGeoip:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteConfigDomainsTargetsTargetRulesParamsKind.
+const (
+	Domain  DeleteConfigDomainsTargetsTargetRulesParamsKind = "domain"
+	Geosite DeleteConfigDomainsTargetsTargetRulesParamsKind = "geosite"
+)
+
+// Valid indicates whether the value is a known member of the DeleteConfigDomainsTargetsTargetRulesParamsKind enum.
+func (e DeleteConfigDomainsTargetsTargetRulesParamsKind) Valid() bool {
+	switch e {
+	case Domain:
+		return true
+	case Geosite:
 		return true
 	default:
 		return false
@@ -1353,6 +1389,26 @@ type GetAuditParams struct {
 	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
+// DeleteConfigCidrTargetsTargetRulesParams defines parameters for DeleteConfigCidrTargetsTargetRules.
+type DeleteConfigCidrTargetsTargetRulesParams struct {
+	Kind  DeleteConfigCidrTargetsTargetRulesParamsKind `form:"kind" json:"kind"`
+	Value string                                       `form:"value" json:"value"`
+	Apply *bool                                        `form:"apply,omitempty" json:"apply,omitempty"`
+}
+
+// DeleteConfigCidrTargetsTargetRulesParamsKind defines parameters for DeleteConfigCidrTargetsTargetRules.
+type DeleteConfigCidrTargetsTargetRulesParamsKind string
+
+// DeleteConfigDomainsTargetsTargetRulesParams defines parameters for DeleteConfigDomainsTargetsTargetRules.
+type DeleteConfigDomainsTargetsTargetRulesParams struct {
+	Kind  DeleteConfigDomainsTargetsTargetRulesParamsKind `form:"kind" json:"kind"`
+	Value string                                          `form:"value" json:"value"`
+	Apply *bool                                           `form:"apply,omitempty" json:"apply,omitempty"`
+}
+
+// DeleteConfigDomainsTargetsTargetRulesParamsKind defines parameters for DeleteConfigDomainsTargetsTargetRules.
+type DeleteConfigDomainsTargetsTargetRulesParamsKind string
+
 // PutConfigNameTextBody defines parameters for PutConfigName.
 type PutConfigNameTextBody = string
 
@@ -1367,9 +1423,6 @@ type PostBackupsRestoreJSONRequestBody = RestoreBackupRequest
 // PutConfigCidrStructuredJSONRequestBody defines body for PutConfigCidrStructured for application/json ContentType.
 type PutConfigCidrStructuredJSONRequestBody = PutCIDRConfigRequest
 
-// DeleteConfigCidrTargetsTargetRulesJSONRequestBody defines body for DeleteConfigCidrTargetsTargetRules for application/json ContentType.
-type DeleteConfigCidrTargetsTargetRulesJSONRequestBody = CIDRRulePatchRequest
-
 // PostConfigCidrTargetsTargetRulesJSONRequestBody defines body for PostConfigCidrTargetsTargetRules for application/json ContentType.
 type PostConfigCidrTargetsTargetRulesJSONRequestBody = CIDRRulePatchRequest
 
@@ -1378,9 +1431,6 @@ type PostConfigCidrValidateJSONRequestBody = PutCIDRConfigRequest
 
 // PutConfigDomainsStructuredJSONRequestBody defines body for PutConfigDomainsStructured for application/json ContentType.
 type PutConfigDomainsStructuredJSONRequestBody = PutDomainConfigRequest
-
-// DeleteConfigDomainsTargetsTargetRulesJSONRequestBody defines body for DeleteConfigDomainsTargetsTargetRules for application/json ContentType.
-type DeleteConfigDomainsTargetsTargetRulesJSONRequestBody = DomainRulePatchRequest
 
 // PostConfigDomainsTargetsTargetRulesJSONRequestBody defines body for PostConfigDomainsTargetsTargetRules for application/json ContentType.
 type PostConfigDomainsTargetsTargetRulesJSONRequestBody = DomainRulePatchRequest

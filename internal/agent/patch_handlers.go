@@ -3,8 +3,10 @@ package agent
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/astronaut808/hrbridge/internal/openapi"
@@ -24,8 +26,8 @@ func (s *Server) handlePatchDomainRule(add bool) http.HandlerFunc {
 			writeError(w, http.StatusPreconditionFailed, "config revision mismatch")
 			return
 		}
-		var req openapi.DomainRulePatchRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		req, err := decodeDomainRulePatchRequest(r, add)
+		if err != nil {
 			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
@@ -55,8 +57,8 @@ func (s *Server) handlePatchCIDRRule(add bool) http.HandlerFunc {
 			writeError(w, http.StatusPreconditionFailed, "config revision mismatch")
 			return
 		}
-		var req openapi.CIDRRulePatchRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		req, err := decodeCIDRRulePatchRequest(r, add)
+		if err != nil {
 			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
@@ -72,6 +74,58 @@ func (s *Server) handlePatchCIDRRule(add bool) http.HandlerFunc {
 		}
 		s.writePatchedConfig(w, r, "cidr-patch", s.cfg.CIDRList, content, req.Apply)
 	}
+}
+
+func decodeDomainRulePatchRequest(r *http.Request, add bool) (openapi.DomainRulePatchRequest, error) {
+	var req openapi.DomainRulePatchRequest
+	if !add && r.URL.Query().Has("kind") {
+		apply, err := optionalBoolQuery(r, "apply")
+		if err != nil {
+			return req, err
+		}
+		req.Kind = openapi.DomainRulePatchRequestKind(r.URL.Query().Get("kind"))
+		req.Value = r.URL.Query().Get("value")
+		req.Apply = apply
+		return req, nil
+	}
+	return req, decodeJSONBody(r, &req)
+}
+
+func decodeCIDRRulePatchRequest(r *http.Request, add bool) (openapi.CIDRRulePatchRequest, error) {
+	var req openapi.CIDRRulePatchRequest
+	if !add && r.URL.Query().Has("kind") {
+		apply, err := optionalBoolQuery(r, "apply")
+		if err != nil {
+			return req, err
+		}
+		req.Kind = openapi.CIDRRulePatchRequestKind(r.URL.Query().Get("kind"))
+		req.Value = r.URL.Query().Get("value")
+		req.Apply = apply
+		return req, nil
+	}
+	return req, decodeJSONBody(r, &req)
+}
+
+func decodeJSONBody(r *http.Request, dst any) error {
+	if err := json.NewDecoder(r.Body).Decode(dst); err != nil {
+		if errors.Is(err, io.EOF) {
+			return errors.New("request body is required")
+		}
+		return err
+	}
+	return nil
+}
+
+func optionalBoolQuery(r *http.Request, name string) (*bool, error) {
+	value := r.URL.Query().Get(name)
+	if value == "" {
+		return nil, nil
+	}
+	parsed, err := strconv.ParseBool(value)
+	if err != nil {
+		return nil, errors.New(name + " must be a boolean")
+	}
+	return &parsed, nil
 }
 
 func (s *Server) writePatchedConfig(w http.ResponseWriter, r *http.Request, reason, path, content string, apply *bool) {

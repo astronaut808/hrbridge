@@ -53,6 +53,25 @@ json_request() {
 	fi
 }
 
+delete_rule() {
+	path=$1
+	kind=$2
+	value=$3
+	revision=${4:-}
+	if [ -n "$revision" ]; then
+		curl -fsS -X DELETE \
+			-H "Authorization: Bearer $TOKEN" \
+			-H "If-Match: $revision" \
+			--get --data-urlencode "kind=$kind" --data-urlencode "value=$value" \
+			"$BASE_URL$path"
+	else
+		curl -fsS -X DELETE \
+			-H "Authorization: Bearer $TOKEN" \
+			--get --data-urlencode "kind=$kind" --data-urlencode "value=$value" \
+			"$BASE_URL$path"
+	fi
+}
+
 revision() {
 	curl -fsS -D "$TMP/headers" -o /dev/null \
 		-H "Authorization: Bearer $TOKEN" "$BASE_URL/config/domains"
@@ -159,8 +178,7 @@ STATUS=$(curl -sS -o "$TMP/stale.json" -w '%{http_code}' -X POST \
 jq -e '.error == "config revision mismatch"' "$TMP/stale.json" >/dev/null
 
 REV_AFTER_ADD=$(revision)
-json_request DELETE "/config/domains/targets/$TARGET/rules" \
-	"{\"kind\":\"domain\",\"value\":\"$DOMAIN\"}" "$REV_AFTER_ADD" \
+delete_rule "/config/domains/targets/$TARGET/rules" domain "$DOMAIN" "$REV_AFTER_ADD" \
 	| jq -e '.saved == true' >/dev/null
 cmp -s "$TMP/domain.before" "$TMP/domain.conf" || fail "domain.conf did not round-trip exactly"
 
@@ -169,8 +187,7 @@ cp "$TMP/ip.list" "$TMP/ip.before"
 json_request POST "/config/cidr/targets/$TARGET/rules" \
 	"{\"kind\":\"cidr\",\"value\":\"$CIDR\"}" \
 	| jq -e '.saved == true' >/dev/null
-json_request DELETE "/config/cidr/targets/$TARGET/rules" \
-	"{\"kind\":\"cidr\",\"value\":\"$CIDR\"}" \
+delete_rule "/config/cidr/targets/$TARGET/rules" cidr "$CIDR" \
 	| jq -e '.saved == true' >/dev/null
 cmp -s "$TMP/ip.before" "$TMP/ip.list" || fail "ip.list did not round-trip exactly"
 

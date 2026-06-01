@@ -63,6 +63,25 @@ json_request() {
 	fi
 }
 
+delete_rule() {
+	path=$1
+	kind=$2
+	value=$3
+	revision=${4:-}
+	if [ -n "$revision" ]; then
+		curl -fsS -X DELETE \
+			-H "Authorization: Bearer $TOKEN" \
+			-H "If-Match: $revision" \
+			--get --data-urlencode "kind=$kind" --data-urlencode "value=$value" \
+			"$BASE_URL$path"
+	else
+		curl -fsS -X DELETE \
+			-H "Authorization: Bearer $TOKEN" \
+			--get --data-urlencode "kind=$kind" --data-urlencode "value=$value" \
+			"$BASE_URL$path"
+	fi
+}
+
 revision() {
 	name=$1
 	curl -fsS -D "$TMP/headers" -o /dev/null \
@@ -80,8 +99,8 @@ delete_rule_best_effort() {
 	value=$3
 	rev=$(revision "$name" 2>/dev/null || true)
 	[ -n "$rev" ] || return 0
-	json_request DELETE "/config/$name/targets/$TARGET/rules" \
-		"$(rule_body "$kind" "$value")" "$rev" >/dev/null 2>&1 || true
+	delete_rule "/config/$name/targets/$TARGET/rules" \
+		"$kind" "$value" "$rev" >/dev/null 2>&1 || true
 }
 
 restore_raw_best_effort() {
@@ -206,8 +225,8 @@ if [ "$MODE" = write ]; then
 		"$BASE_URL/config/domains/targets/$TARGET/rules")
 	[ "$status" = 412 ] || STALE_DOMAIN_ADDED=1
 	[ "$status" = 412 ] || fail "stale domain write returned HTTP $status instead of 412"
-	json_request DELETE "/config/domains/targets/$TARGET/rules" \
-		"$(rule_body domain "$DOMAIN")" "$rev_after_add" | jq -e '.saved == true' >/dev/null
+	delete_rule "/config/domains/targets/$TARGET/rules" \
+		domain "$DOMAIN" "$rev_after_add" | jq -e '.saved == true' >/dev/null
 	DOMAIN_ADDED=
 	json_get /config/domains | jq -j '.content' >"$TMP/domain.after"
 	cmp -s "$TMP/domain.before" "$TMP/domain.after" \
@@ -218,8 +237,8 @@ if [ "$MODE" = write ]; then
 	json_request POST "/config/cidr/targets/$TARGET/rules" \
 		"$(rule_body cidr "$CIDR")" "$rev" | jq -e '.saved == true and .applied == false' >/dev/null
 	rev_after_add=$(revision cidr)
-	json_request DELETE "/config/cidr/targets/$TARGET/rules" \
-		"$(rule_body cidr "$CIDR")" "$rev_after_add" | jq -e '.saved == true' >/dev/null
+	delete_rule "/config/cidr/targets/$TARGET/rules" \
+		cidr "$CIDR" "$rev_after_add" | jq -e '.saved == true' >/dev/null
 	CIDR_ADDED=
 	json_get /config/cidr | jq -j '.content' >"$TMP/cidr.after"
 	cmp -s "$TMP/cidr.before" "$TMP/cidr.after" \
