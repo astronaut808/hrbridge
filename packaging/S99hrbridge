@@ -2,10 +2,10 @@
 
 ENABLED=yes
 PROCS=hrbridge
-ARGS=""
+ARGS="-config /opt/etc/hrbridge/hrbridge.conf"
 PREARGS=""
 DESC=$PROCS
 PIDFILE="/var/run/hrbridge.pid"
-PATH=/opt/sbin:/opt/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+PATH=/opt/etc/hrbridge:/opt/sbin:/opt/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 . /opt/etc/init.d/rc.func

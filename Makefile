@@ -82,11 +82,10 @@ package-ipk:
 	@test -n "$(BIN)"
 	@rm -rf $(PACKAGE_DIR)/$(ARCH)
 	@mkdir -p $(PACKAGE_DIR)/$(ARCH)/control
-	@mkdir -p $(PACKAGE_DIR)/$(ARCH)/data/opt/bin
-	@mkdir -p $(PACKAGE_DIR)/$(ARCH)/data/opt/etc/HydraRoute
+	@install -d -m 0700 $(PACKAGE_DIR)/$(ARCH)/data/opt/etc/hrbridge
 	@mkdir -p $(PACKAGE_DIR)/$(ARCH)/data/opt/etc/init.d
-	@install -m 0755 $(BIN) $(PACKAGE_DIR)/$(ARCH)/data/opt/bin/$(PROJECT)
-	@install -m 0644 packaging/hrbridge.conf $(PACKAGE_DIR)/$(ARCH)/data/opt/etc/HydraRoute/hrbridge.conf
+	@install -m 0755 $(BIN) $(PACKAGE_DIR)/$(ARCH)/data/opt/etc/hrbridge/$(PROJECT)
+	@install -m 0600 packaging/hrbridge.conf $(PACKAGE_DIR)/$(ARCH)/data/opt/etc/hrbridge/hrbridge.conf
 	@install -m 0755 packaging/S99hrbridge $(PACKAGE_DIR)/$(ARCH)/data/opt/etc/init.d/S99hrbridge
 	@sed -e 's/@VERSION@/$(VERSION)/g' -e 's/@ARCH@/$(ARCH)/g' packaging/control > $(PACKAGE_DIR)/$(ARCH)/control/control
 	@install -m 0644 packaging/conffiles $(PACKAGE_DIR)/$(ARCH)/control/conffiles

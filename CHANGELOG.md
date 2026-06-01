@@ -1,12 +1,5 @@
 # История изменений
 
-## Unreleased
-
-- Добавлен opkg-feed для GitHub Pages со всеми поддерживаемыми
-  Entware-архитектурами.
-- Добавлен однострочный установщик для роутера: он подключает feed, устанавливает
-  HydraBridge, запускает сервис и выводит bearer token.
-
 ## 0.1.0
 
 Первый публичный выпуск HydraBridge.
@@ -19,5 +12,7 @@
 - Backup, restore, audit, logs и service lifecycle.
 - Local и live-router smoke-профили.
 - Сборка на Go `1.26.3`, CI с `golangci-lint v2.12.2`.
+- Установка в `/opt/etc/hrbridge/`, IPK и opkg-feed для GitHub Pages.
+- Однострочный установщик для роутера.
 - ИБ-hardening: SSRF-защита GeoData download, ограничение GeoData upload
   штатным каталогом, HTTP request limits и безопасный разбор GeoData protobuf.

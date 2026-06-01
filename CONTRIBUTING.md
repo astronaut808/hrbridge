@@ -5,18 +5,12 @@
 HydraBridge поддерживает существующее поведение HR Neo. Новая функциональность
 не должна незаметно создавать отдельную модель маршрутизации.
 
-## Проверки
+## Разработка и проверки
 
-Перед pull request:
-
-```sh
-make ci
-make lint
-make smoke-local
-```
-
-При изменении интеграции с роутером дополнительно выполните подходящие профили
-из [docs/RELEASE.md](docs/RELEASE.md).
+Команды локальной сборки и проверок описаны в
+[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). Перед pull request выполните
+`make ci`, `make lint` и `make smoke-local`. При изменении интеграции с роутером
+дополнительно запустите подходящие live-router smoke-профили.
 
 ## OpenAPI
 

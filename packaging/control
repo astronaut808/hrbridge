@@ -5,4 +5,5 @@ Maintainer: astronaut808
 Section: net
 Priority: optional
 Depends: hrneo
+License: MIT
 Description: Unified HTTP control API for HydraRoute Neo.

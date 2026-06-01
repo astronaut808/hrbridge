@@ -68,4 +68,4 @@ echo "Starting HydraBridge..."
 echo ""
 echo "HydraBridge is installed."
 echo "Bearer token:"
-sed -n 's/^authToken=//p' /opt/etc/HydraRoute/hrbridge.conf
+sed -n 's/^authToken=//p' /opt/etc/hrbridge/hrbridge.conf

@@ -11,7 +11,7 @@ HydraBridge предназначен для локальной сети роут
 ## Токен
 
 HydraBridge создает случайный токен при первом запуске, если `authToken=` пуст.
-Файл `/opt/etc/HydraRoute/hrbridge.conf` должен быть доступен только root.
+Файл `/opt/etc/hrbridge/hrbridge.conf` должен быть доступен только root.
 
 Ротация токена:
 

@@ -12,7 +12,7 @@ import (
 
 const (
 	Version           = "0.1.0"
-	DefaultConfigPath = "/opt/etc/HydraRoute/hrbridge.conf"
+	DefaultConfigPath = "/opt/etc/hrbridge/hrbridge.conf"
 
 	DefaultHRNeoConf  = "/opt/etc/HydraRoute/hrneo.conf"
 	DefaultDomainConf = "/opt/etc/HydraRoute/domain.conf"

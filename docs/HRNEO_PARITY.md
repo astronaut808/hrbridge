@@ -89,11 +89,5 @@ HydraBridge предоставляет API для поведения, котор
 - `SIGUSR1` reload;
 - обратимое создание и удаление Keenetic policy через RCI.
 
-## Smoke-профили
-
-- `make smoke-router` - read-only проверка.
-- `make smoke-router-write` - подтверждаемая обратимая запись domain/CIDR.
-- `make smoke-router-service` - подтверждаемые service actions.
-- `make smoke-router-rci` - подтверждаемое создание и удаление временной policy.
-
-Профили, меняющие состояние, требуют отдельных переменных подтверждения.
+Команды воспроизведения live-router проверок находятся в
+[DEVELOPMENT.md](DEVELOPMENT.md#проверка-реального-роутера).
