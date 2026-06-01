@@ -593,32 +593,32 @@ func (e ServiceAction) Valid() bool {
 	}
 }
 
-// Defines values for DeleteConfigCidrTargetsTargetRulesParamsKind.
+// Defines values for DeleteCidrTargetRuleParamsKind.
 const (
-	DeleteConfigCidrTargetsTargetRulesParamsKindCidr  DeleteConfigCidrTargetsTargetRulesParamsKind = "cidr"
-	DeleteConfigCidrTargetsTargetRulesParamsKindGeoip DeleteConfigCidrTargetsTargetRulesParamsKind = "geoip"
+	DeleteCidrTargetRuleParamsKindCidr  DeleteCidrTargetRuleParamsKind = "cidr"
+	DeleteCidrTargetRuleParamsKindGeoip DeleteCidrTargetRuleParamsKind = "geoip"
 )
 
-// Valid indicates whether the value is a known member of the DeleteConfigCidrTargetsTargetRulesParamsKind enum.
-func (e DeleteConfigCidrTargetsTargetRulesParamsKind) Valid() bool {
+// Valid indicates whether the value is a known member of the DeleteCidrTargetRuleParamsKind enum.
+func (e DeleteCidrTargetRuleParamsKind) Valid() bool {
 	switch e {
-	case DeleteConfigCidrTargetsTargetRulesParamsKindCidr:
+	case DeleteCidrTargetRuleParamsKindCidr:
 		return true
-	case DeleteConfigCidrTargetsTargetRulesParamsKindGeoip:
+	case DeleteCidrTargetRuleParamsKindGeoip:
 		return true
 	default:
 		return false
 	}
 }
 
-// Defines values for DeleteConfigDomainsTargetsTargetRulesParamsKind.
+// Defines values for DeleteDomainTargetRuleParamsKind.
 const (
-	Domain  DeleteConfigDomainsTargetsTargetRulesParamsKind = "domain"
-	Geosite DeleteConfigDomainsTargetsTargetRulesParamsKind = "geosite"
+	Domain  DeleteDomainTargetRuleParamsKind = "domain"
+	Geosite DeleteDomainTargetRuleParamsKind = "geosite"
 )
 
-// Valid indicates whether the value is a known member of the DeleteConfigDomainsTargetsTargetRulesParamsKind enum.
-func (e DeleteConfigDomainsTargetsTargetRulesParamsKind) Valid() bool {
+// Valid indicates whether the value is a known member of the DeleteDomainTargetRuleParamsKind enum.
+func (e DeleteDomainTargetRuleParamsKind) Valid() bool {
 	switch e {
 	case Domain:
 		return true
@@ -722,11 +722,6 @@ type ConfigFileResponseName string
 
 // ConfigFileResponseRequiredAction defines model for ConfigFileResponse.RequiredAction.
 type ConfigFileResponseRequiredAction string
-
-// ConfigRevision defines model for ConfigRevision.
-type ConfigRevision struct {
-	Revision string `json:"revision"`
-}
 
 // DoctorCheck defines model for DoctorCheck.
 type DoctorCheck struct {
@@ -1384,98 +1379,98 @@ type Unauthorized = ErrorResponse
 // bearerAuthContextKey is the context key for bearerAuth security scheme
 type bearerAuthContextKey string
 
-// GetAuditParams defines parameters for GetAudit.
-type GetAuditParams struct {
+// GetAuditEventsParams defines parameters for GetAuditEvents.
+type GetAuditEventsParams struct {
 	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
-// DeleteConfigCidrTargetsTargetRulesParams defines parameters for DeleteConfigCidrTargetsTargetRules.
-type DeleteConfigCidrTargetsTargetRulesParams struct {
-	Kind  DeleteConfigCidrTargetsTargetRulesParamsKind `form:"kind" json:"kind"`
-	Value string                                       `form:"value" json:"value"`
-	Apply *bool                                        `form:"apply,omitempty" json:"apply,omitempty"`
+// DeleteCidrTargetRuleParams defines parameters for DeleteCidrTargetRule.
+type DeleteCidrTargetRuleParams struct {
+	Kind  DeleteCidrTargetRuleParamsKind `form:"kind" json:"kind"`
+	Value string                         `form:"value" json:"value"`
+	Apply *bool                          `form:"apply,omitempty" json:"apply,omitempty"`
 }
 
-// DeleteConfigCidrTargetsTargetRulesParamsKind defines parameters for DeleteConfigCidrTargetsTargetRules.
-type DeleteConfigCidrTargetsTargetRulesParamsKind string
+// DeleteCidrTargetRuleParamsKind defines parameters for DeleteCidrTargetRule.
+type DeleteCidrTargetRuleParamsKind string
 
-// DeleteConfigDomainsTargetsTargetRulesParams defines parameters for DeleteConfigDomainsTargetsTargetRules.
-type DeleteConfigDomainsTargetsTargetRulesParams struct {
-	Kind  DeleteConfigDomainsTargetsTargetRulesParamsKind `form:"kind" json:"kind"`
-	Value string                                          `form:"value" json:"value"`
-	Apply *bool                                           `form:"apply,omitempty" json:"apply,omitempty"`
+// DeleteDomainTargetRuleParams defines parameters for DeleteDomainTargetRule.
+type DeleteDomainTargetRuleParams struct {
+	Kind  DeleteDomainTargetRuleParamsKind `form:"kind" json:"kind"`
+	Value string                           `form:"value" json:"value"`
+	Apply *bool                            `form:"apply,omitempty" json:"apply,omitempty"`
 }
 
-// DeleteConfigDomainsTargetsTargetRulesParamsKind defines parameters for DeleteConfigDomainsTargetsTargetRules.
-type DeleteConfigDomainsTargetsTargetRulesParamsKind string
+// DeleteDomainTargetRuleParamsKind defines parameters for DeleteDomainTargetRule.
+type DeleteDomainTargetRuleParamsKind string
 
-// PutConfigNameTextBody defines parameters for PutConfigName.
-type PutConfigNameTextBody = string
+// PutRawConfigTextBody defines parameters for PutRawConfig.
+type PutRawConfigTextBody = string
 
 // GetLogsParams defines parameters for GetLogs.
 type GetLogsParams struct {
 	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
-// PostBackupsRestoreJSONRequestBody defines body for PostBackupsRestore for application/json ContentType.
-type PostBackupsRestoreJSONRequestBody = RestoreBackupRequest
+// RestoreBackupJSONRequestBody defines body for RestoreBackup for application/json ContentType.
+type RestoreBackupJSONRequestBody = RestoreBackupRequest
 
-// PutConfigCidrStructuredJSONRequestBody defines body for PutConfigCidrStructured for application/json ContentType.
-type PutConfigCidrStructuredJSONRequestBody = PutCIDRConfigRequest
+// PutStructuredCidrConfigJSONRequestBody defines body for PutStructuredCidrConfig for application/json ContentType.
+type PutStructuredCidrConfigJSONRequestBody = PutCIDRConfigRequest
 
-// PostConfigCidrTargetsTargetRulesJSONRequestBody defines body for PostConfigCidrTargetsTargetRules for application/json ContentType.
-type PostConfigCidrTargetsTargetRulesJSONRequestBody = CIDRRulePatchRequest
+// AddCidrTargetRuleJSONRequestBody defines body for AddCidrTargetRule for application/json ContentType.
+type AddCidrTargetRuleJSONRequestBody = CIDRRulePatchRequest
 
-// PostConfigCidrValidateJSONRequestBody defines body for PostConfigCidrValidate for application/json ContentType.
-type PostConfigCidrValidateJSONRequestBody = PutCIDRConfigRequest
+// ValidateCidrConfigJSONRequestBody defines body for ValidateCidrConfig for application/json ContentType.
+type ValidateCidrConfigJSONRequestBody = PutCIDRConfigRequest
 
-// PutConfigDomainsStructuredJSONRequestBody defines body for PutConfigDomainsStructured for application/json ContentType.
-type PutConfigDomainsStructuredJSONRequestBody = PutDomainConfigRequest
+// PutStructuredDomainConfigJSONRequestBody defines body for PutStructuredDomainConfig for application/json ContentType.
+type PutStructuredDomainConfigJSONRequestBody = PutDomainConfigRequest
 
-// PostConfigDomainsTargetsTargetRulesJSONRequestBody defines body for PostConfigDomainsTargetsTargetRules for application/json ContentType.
-type PostConfigDomainsTargetsTargetRulesJSONRequestBody = DomainRulePatchRequest
+// AddDomainTargetRuleJSONRequestBody defines body for AddDomainTargetRule for application/json ContentType.
+type AddDomainTargetRuleJSONRequestBody = DomainRulePatchRequest
 
-// PostConfigDomainsValidateJSONRequestBody defines body for PostConfigDomainsValidate for application/json ContentType.
-type PostConfigDomainsValidateJSONRequestBody = PutDomainConfigRequest
+// ValidateDomainConfigJSONRequestBody defines body for ValidateDomainConfig for application/json ContentType.
+type ValidateDomainConfigJSONRequestBody = PutDomainConfigRequest
 
-// PostConfigHrneoGenerateDefaultJSONRequestBody defines body for PostConfigHrneoGenerateDefault for application/json ContentType.
-type PostConfigHrneoGenerateDefaultJSONRequestBody = GenerateDefaultHRNeoConfigRequest
+// GenerateDefaultHrneoConfigJSONRequestBody defines body for GenerateDefaultHrneoConfig for application/json ContentType.
+type GenerateDefaultHrneoConfigJSONRequestBody = GenerateDefaultHRNeoConfigRequest
 
-// PutConfigHrneoStructuredJSONRequestBody defines body for PutConfigHrneoStructured for application/json ContentType.
-type PutConfigHrneoStructuredJSONRequestBody = PutHRNeoConfigRequest
+// PutStructuredHrneoConfigJSONRequestBody defines body for PutStructuredHrneoConfig for application/json ContentType.
+type PutStructuredHrneoConfigJSONRequestBody = PutHRNeoConfigRequest
 
-// PutConfigNameJSONRequestBody defines body for PutConfigName for application/json ContentType.
-type PutConfigNameJSONRequestBody = PutConfigRequest
+// PutRawConfigJSONRequestBody defines body for PutRawConfig for application/json ContentType.
+type PutRawConfigJSONRequestBody = PutConfigRequest
 
-// PutConfigNameTextRequestBody defines body for PutConfigName for text/plain ContentType.
-type PutConfigNameTextRequestBody = PutConfigNameTextBody
+// PutRawConfigTextRequestBody defines body for PutRawConfig for text/plain ContentType.
+type PutRawConfigTextRequestBody = PutRawConfigTextBody
 
-// PostDiagnosticsDomainJSONRequestBody defines body for PostDiagnosticsDomain for application/json ContentType.
-type PostDiagnosticsDomainJSONRequestBody = DomainDiagnosticRequest
+// DiagnoseDomainJSONRequestBody defines body for DiagnoseDomain for application/json ContentType.
+type DiagnoseDomainJSONRequestBody = DomainDiagnosticRequest
 
-// PostDiagnosticsIpJSONRequestBody defines body for PostDiagnosticsIp for application/json ContentType.
-type PostDiagnosticsIpJSONRequestBody = IPDiagnosticRequest
+// DiagnoseIpJSONRequestBody defines body for DiagnoseIp for application/json ContentType.
+type DiagnoseIpJSONRequestBody = IPDiagnosticRequest
 
-// PostGeodataDownloadJSONRequestBody defines body for PostGeodataDownload for application/json ContentType.
-type PostGeodataDownloadJSONRequestBody = GeoDataDownloadRequest
+// DownloadGeodataFileJSONRequestBody defines body for DownloadGeodataFile for application/json ContentType.
+type DownloadGeodataFileJSONRequestBody = GeoDataDownloadRequest
 
-// PostGeodataFilesJSONRequestBody defines body for PostGeodataFiles for application/json ContentType.
-type PostGeodataFilesJSONRequestBody = GeoDataUploadRequest
+// UploadGeodataFileJSONRequestBody defines body for UploadGeodataFile for application/json ContentType.
+type UploadGeodataFileJSONRequestBody = GeoDataUploadRequest
 
-// PostImportCsvApplyJSONRequestBody defines body for PostImportCsvApply for application/json ContentType.
-type PostImportCsvApplyJSONRequestBody = ImportCSVRequest
+// ApplyCsvImportJSONRequestBody defines body for ApplyCsvImport for application/json ContentType.
+type ApplyCsvImportJSONRequestBody = ImportCSVRequest
 
-// PostImportCsvPreviewJSONRequestBody defines body for PostImportCsvPreview for application/json ContentType.
-type PostImportCsvPreviewJSONRequestBody = ImportCSVRequest
+// PreviewCsvImportJSONRequestBody defines body for PreviewCsvImport for application/json ContentType.
+type PreviewCsvImportJSONRequestBody = ImportCSVRequest
 
-// PostImportsTextApplyJSONRequestBody defines body for PostImportsTextApply for application/json ContentType.
-type PostImportsTextApplyJSONRequestBody = ImportTextRequest
+// ApplyTextImportJSONRequestBody defines body for ApplyTextImport for application/json ContentType.
+type ApplyTextImportJSONRequestBody = ImportTextRequest
 
-// PostImportsTextPreviewJSONRequestBody defines body for PostImportsTextPreview for application/json ContentType.
-type PostImportsTextPreviewJSONRequestBody = ImportTextRequest
+// PreviewTextImportJSONRequestBody defines body for PreviewTextImport for application/json ContentType.
+type PreviewTextImportJSONRequestBody = ImportTextRequest
 
-// PutTargetsOrderJSONRequestBody defines body for PutTargetsOrder for application/json ContentType.
-type PutTargetsOrderJSONRequestBody = PutTargetOrderRequest
+// PutTargetOrderJSONRequestBody defines body for PutTargetOrder for application/json ContentType.
+type PutTargetOrderJSONRequestBody = PutTargetOrderRequest
 
-// PostTargetsPoliciesJSONRequestBody defines body for PostTargetsPolicies for application/json ContentType.
-type PostTargetsPoliciesJSONRequestBody = PolicyMutationRequest
+// CreateTargetPolicyJSONRequestBody defines body for CreateTargetPolicy for application/json ContentType.
+type CreateTargetPolicyJSONRequestBody = PolicyMutationRequest
