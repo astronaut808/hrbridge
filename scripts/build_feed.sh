@@ -29,7 +29,7 @@ write_index() {
   cp "$package" "$destination/$filename"
 
   {
-    ar p "$package" control.tar.gz | tar -xzO ./control
+    gzip -dc "$package" | tar -xzO ./control.tar.gz | tar -xzO ./control
     printf 'Filename: %s\n' "$filename"
     printf 'Size: %s\n' "$(package_size "$package")"
     printf 'SHA256sum: %s\n' "$(sha256_file "$package")"

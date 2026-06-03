@@ -97,13 +97,13 @@ package-ipk:
 	@sed -e 's/@VERSION@/$(VERSION)/g' -e 's/@ARCH@/$(ARCH)/g' packaging/control > $(PACKAGE_DIR)/$(ARCH)/control/control
 	@install -m 0644 packaging/conffiles $(PACKAGE_DIR)/$(ARCH)/control/conffiles
 	@printf "2.0\n" > $(PACKAGE_DIR)/$(ARCH)/debian-binary
-	@cd $(PACKAGE_DIR)/$(ARCH)/control && tar -czf ../control.tar.gz .
-	@cd $(PACKAGE_DIR)/$(ARCH)/data && tar -czf ../data.tar.gz .
+	@cd $(PACKAGE_DIR)/$(ARCH)/control && COPYFILE_DISABLE=1 tar --uid 0 --gid 0 --uname root --gname root -czf ../control.tar.gz .
+	@cd $(PACKAGE_DIR)/$(ARCH)/data && COPYFILE_DISABLE=1 tar --uid 0 --gid 0 --uname root --gname root -czf ../data.tar.gz .
 	@rm -f $(BUILD_DIR)/$(PROJECT)_$(VERSION)_$(ARCH).ipk
-	@cd $(PACKAGE_DIR)/$(ARCH) && ar rcS ../../$(PROJECT)_$(VERSION)_$(ARCH).ipk debian-binary control.tar.gz data.tar.gz >/dev/null
-	@for member in debian-binary control.tar.gz data.tar.gz; do \
-		ar t $(BUILD_DIR)/$(PROJECT)_$(VERSION)_$(ARCH).ipk | grep -qx "$$member" || exit 1; \
-	done
+	@cd $(PACKAGE_DIR)/$(ARCH) && COPYFILE_DISABLE=1 tar --uid 0 --gid 0 --uname root --gname root -czf ../../$(PROJECT)_$(VERSION)_$(ARCH).ipk ./debian-binary ./control.tar.gz ./data.tar.gz
+	@gzip -dc $(BUILD_DIR)/$(PROJECT)_$(VERSION)_$(ARCH).ipk | tar -tf - | grep -qx './debian-binary'
+	@gzip -dc $(BUILD_DIR)/$(PROJECT)_$(VERSION)_$(ARCH).ipk | tar -tf - | grep -qx './control.tar.gz'
+	@gzip -dc $(BUILD_DIR)/$(PROJECT)_$(VERSION)_$(ARCH).ipk | tar -tf - | grep -qx './data.tar.gz'
 
 clean:
 	rm -rf $(BUILD_DIR)
