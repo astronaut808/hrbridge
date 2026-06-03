@@ -6,10 +6,11 @@ GOLANGCI_LINT_VERSION ?= v2.12.2
 BUILD_DIR ?= build
 PACKAGE_DIR ?= $(BUILD_DIR)/package
 LDFLAGS = -s -w
+TAR_OWNER_FLAGS := $(shell if tar --version 2>/dev/null | grep -qi "gnu tar"; then printf "%s" "--owner=0 --group=0 --numeric-owner"; else printf "%s" "--uid 0 --gid 0 --uname root --gname root"; fi)
 
 .PHONY: all clean native darwin aarch64 mipsel mips
 .PHONY: package package-aarch64 package-mipsel package-mips feed
-.PHONY: generate fmt-check test lint ci shell-check smoke-local smoke-router smoke-router-write smoke-router-service smoke-router-rci
+.PHONY: generate fmt-check test lint ci shell-check package-check smoke-local smoke-router smoke-router-write smoke-router-service smoke-router-rci
 
 all: aarch64 mipsel mips
 package: package-aarch64 package-mipsel package-mips
@@ -33,11 +34,20 @@ test:
 lint:
 	$(GO) run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION) run ./...
 
-ci: generate fmt-check test native shell-check
+ci: generate fmt-check test native shell-check package-check
 
 shell-check:
 	@for script in packaging/S99hrbridge scripts/*.sh; do \
 		sh -n "$$script"; \
+	done
+
+package-check: package
+	@for package in $(BUILD_DIR)/$(PROJECT)_$(VERSION)_*.ipk; do \
+		gzip -t "$$package"; \
+		gzip -dc "$$package" | tar -tf - | grep -qx './debian-binary'; \
+		gzip -dc "$$package" | tar -tf - | grep -qx './control.tar.gz'; \
+		gzip -dc "$$package" | tar -tf - | grep -qx './data.tar.gz'; \
+		gzip -dc "$$package" | tar -xzO ./control.tar.gz | tar -xzO ./control | grep -qx 'Package: $(PROJECT)'; \
 	done
 
 smoke-local: native
@@ -97,10 +107,10 @@ package-ipk:
 	@sed -e 's/@VERSION@/$(VERSION)/g' -e 's/@ARCH@/$(ARCH)/g' packaging/control > $(PACKAGE_DIR)/$(ARCH)/control/control
 	@install -m 0644 packaging/conffiles $(PACKAGE_DIR)/$(ARCH)/control/conffiles
 	@printf "2.0\n" > $(PACKAGE_DIR)/$(ARCH)/debian-binary
-	@cd $(PACKAGE_DIR)/$(ARCH)/control && COPYFILE_DISABLE=1 tar --uid 0 --gid 0 --uname root --gname root -czf ../control.tar.gz .
-	@cd $(PACKAGE_DIR)/$(ARCH)/data && COPYFILE_DISABLE=1 tar --uid 0 --gid 0 --uname root --gname root -czf ../data.tar.gz .
+	@cd $(PACKAGE_DIR)/$(ARCH)/control && COPYFILE_DISABLE=1 tar $(TAR_OWNER_FLAGS) -czf ../control.tar.gz .
+	@cd $(PACKAGE_DIR)/$(ARCH)/data && COPYFILE_DISABLE=1 tar $(TAR_OWNER_FLAGS) -czf ../data.tar.gz .
 	@rm -f $(BUILD_DIR)/$(PROJECT)_$(VERSION)_$(ARCH).ipk
-	@cd $(PACKAGE_DIR)/$(ARCH) && COPYFILE_DISABLE=1 tar --uid 0 --gid 0 --uname root --gname root -czf ../../$(PROJECT)_$(VERSION)_$(ARCH).ipk ./debian-binary ./control.tar.gz ./data.tar.gz
+	@cd $(PACKAGE_DIR)/$(ARCH) && COPYFILE_DISABLE=1 tar $(TAR_OWNER_FLAGS) -czf ../../$(PROJECT)_$(VERSION)_$(ARCH).ipk ./debian-binary ./control.tar.gz ./data.tar.gz
 	@gzip -dc $(BUILD_DIR)/$(PROJECT)_$(VERSION)_$(ARCH).ipk | tar -tf - | grep -qx './debian-binary'
 	@gzip -dc $(BUILD_DIR)/$(PROJECT)_$(VERSION)_$(ARCH).ipk | tar -tf - | grep -qx './control.tar.gz'
 	@gzip -dc $(BUILD_DIR)/$(PROJECT)_$(VERSION)_$(ARCH).ipk | tar -tf - | grep -qx './data.tar.gz'
