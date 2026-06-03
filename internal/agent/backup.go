@@ -84,12 +84,13 @@ func (s *Server) listBackups() ([]BackupInfo, error) {
 }
 
 func (s *Server) restoreBackup(id string) ([]string, error) {
-	if id != sanitizeBackupID(id) {
-		return nil, fmt.Errorf("invalid backup id")
+	dir, err := s.validatedBackupDir(id)
+	if err != nil {
+		return nil, err
 	}
-	dir := filepath.Join(s.cfg.BackupDir, id)
-	// codeql[go/path-injection] id must round-trip through sanitizeBackupID,
-	// so the backup path stays below the configured backup directory.
+	// Backup id has passed strict character validation and a containment check
+	// against the configured backup directory.
+	// lgtm[go/path-injection]
 	if st, err := os.Stat(dir); err != nil {
 		return nil, err
 	} else if !st.IsDir() {
@@ -103,9 +104,13 @@ func (s *Server) restoreBackup(id string) ([]string, error) {
 	}
 	var restored []string
 	for name, target := range targets {
-		src := filepath.Join(dir, name)
-		// codeql[go/path-injection] Backup id is sanitized and filename comes
-		// from the fixed targets allowlist above.
+		src, err := backupFilePath(dir, name)
+		if err != nil {
+			return nil, err
+		}
+		// Backup id is constrained to the backup directory, and backup file
+		// name is selected from the fixed HR Neo file allowlist.
+		// lgtm[go/path-injection]
 		data, err := os.ReadFile(src) // #nosec G304 -- backup ID is sanitized and filename comes from a fixed allowlist
 		if err != nil {
 			if os.IsNotExist(err) {
@@ -120,6 +125,63 @@ func (s *Server) restoreBackup(id string) ([]string, error) {
 	}
 	sort.Strings(restored)
 	return restored, nil
+}
+
+func (s *Server) validatedBackupDir(id string) (string, error) {
+	if err := validateBackupID(id); err != nil {
+		return "", err
+	}
+	base, err := filepath.Abs(s.cfg.BackupDir)
+	if err != nil {
+		return "", err
+	}
+	dir, err := filepath.Abs(filepath.Join(base, id))
+	if err != nil {
+		return "", err
+	}
+	rel, err := filepath.Rel(base, dir)
+	if err != nil {
+		return "", err
+	}
+	if rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("backup id escapes backup directory")
+	}
+	return dir, nil
+}
+
+func validateBackupID(id string) error {
+	if id == "" {
+		return fmt.Errorf("invalid backup id")
+	}
+	if len(id) > 128 {
+		return fmt.Errorf("invalid backup id")
+	}
+	if strings.Contains(id, "..") || strings.ContainsAny(id, `/\`) {
+		return fmt.Errorf("invalid backup id")
+	}
+	for _, r := range id {
+		switch {
+		case r >= 'a' && r <= 'z':
+		case r >= 'A' && r <= 'Z':
+		case r >= '0' && r <= '9':
+		case r == '-' || r == '_' || r == '.':
+		default:
+			return fmt.Errorf("invalid backup id")
+		}
+	}
+	return nil
+}
+
+func backupFilePath(dir, name string) (string, error) {
+	switch name {
+	case "hrneo.conf", "domain.conf", "ip.list":
+	default:
+		return "", fmt.Errorf("invalid backup file")
+	}
+	if filepath.Base(name) != name {
+		return "", fmt.Errorf("invalid backup file")
+	}
+	return filepath.Join(dir, name), nil
 }
 
 func sanitizeName(v string) string {
@@ -139,23 +201,6 @@ func sanitizeName(v string) string {
 	}
 	if b.Len() > 48 {
 		return b.String()[:48]
-	}
-	return b.String()
-}
-
-func sanitizeBackupID(v string) string {
-	var b strings.Builder
-	for _, r := range v {
-		switch {
-		case r >= 'a' && r <= 'z':
-			b.WriteRune(r)
-		case r >= 'A' && r <= 'Z':
-			b.WriteRune(r)
-		case r >= '0' && r <= '9':
-			b.WriteRune(r)
-		case r == '-' || r == '_' || r == '.' || r == 'T' || r == 'Z':
-			b.WriteRune(r)
-		}
 	}
 	return b.String()
 }
