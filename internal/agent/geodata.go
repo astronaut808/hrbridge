@@ -42,7 +42,8 @@ func (s *Server) handleGeoDataUpload(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	if err := s.validateGeoDataRequest(req.Kind, req.Path); err != nil {
+	path, err := s.validatedGeoDataPath(req.Kind, req.Path)
+	if err != nil {
 		s.writeAudit(r, "geodata.upload", string(req.Kind), false, "", err)
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
@@ -60,13 +61,13 @@ func (s *Server) handleGeoDataUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	updated, err := s.saveGeoData(req.Kind, req.Path, data, addToConfigDefault(req.AddToConfig))
+	updated, err := s.saveGeoData(req.Kind, path, data, addToConfigDefault(req.AddToConfig))
 	if err != nil {
 		s.writeAudit(r, "geodata.upload", string(req.Kind), false, "", err)
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	info, err := geoDataFileInfo(req.Kind, req.Path, true)
+	info, err := s.geoDataFileInfo(req.Kind, path, true)
 	if err != nil {
 		s.writeAudit(r, "geodata.upload", string(req.Kind), false, "", err)
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -88,17 +89,19 @@ func (s *Server) handleGeoDataDownload(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	if err := s.validateGeoDataRequest(req.Kind, req.Path); err != nil {
+	path, err := s.validatedGeoDataPath(req.Kind, req.Path)
+	if err != nil {
 		s.writeAudit(r, "geodata.download", string(req.Kind), false, "", err)
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	if err := validateGeoDataURL(req.Url); err != nil {
+	validatedURL, err := validateGeoDataURL(req.Url)
+	if err != nil {
 		s.writeAudit(r, "geodata.download", string(req.Kind), false, "", err)
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	data, err := downloadGeoData(r.Context(), req.Url)
+	data, err := downloadGeoData(r.Context(), validatedURL)
 	if err != nil {
 		s.writeAudit(r, "geodata.download", string(req.Kind), false, "", err)
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -111,13 +114,13 @@ func (s *Server) handleGeoDataDownload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	updated, err := s.saveGeoData(req.Kind, req.Path, data, addToConfigDefault(req.AddToConfig))
+	updated, err := s.saveGeoData(req.Kind, path, data, addToConfigDefault(req.AddToConfig))
 	if err != nil {
 		s.writeAudit(r, "geodata.download", string(req.Kind), false, "", err)
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	info, err := geoDataFileInfo(req.Kind, req.Path, true)
+	info, err := s.geoDataFileInfo(req.Kind, path, true)
 	if err != nil {
 		s.writeAudit(r, "geodata.download", string(req.Kind), false, "", err)
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -193,14 +196,14 @@ func (s *Server) geoDataFiles() ([]openapi.GeoDataFileInfo, error) {
 	}
 	var out []openapi.GeoDataFileInfo
 	for _, path := range stringSliceValue(cfg.GeoIPFile) {
-		info, err := geoDataFileInfo(openapi.GeoDataKindGeoip, path, true)
+		info, err := s.geoDataFileInfo(openapi.GeoDataKindGeoip, path, true)
 		if err != nil {
 			return nil, err
 		}
 		out = append(out, info)
 	}
 	for _, path := range stringSliceValue(cfg.GeoSiteFile) {
-		info, err := geoDataFileInfo(openapi.GeoDataKindGeosite, path, true)
+		info, err := s.geoDataFileInfo(openapi.GeoDataKindGeosite, path, true)
 		if err != nil {
 			return nil, err
 		}
@@ -389,13 +392,20 @@ func (s *Server) saveGeoData(kind openapi.GeoDataKind, path string, data []byte,
 	return true, atomicWriteFile(s.cfg.HRNeoConf, []byte(patched), 0o600)
 }
 
-func geoDataFileInfo(kind openapi.GeoDataKind, path string, configured bool) (openapi.GeoDataFileInfo, error) {
+func (s *Server) geoDataFileInfo(kind openapi.GeoDataKind, path string, configured bool) (openapi.GeoDataFileInfo, error) {
 	info := openapi.GeoDataFileInfo{
 		Kind:       kind,
 		Path:       path,
 		Configured: configured,
 		Exists:     false,
 	}
+	path, err := s.validatedGeoDataPath(kind, path)
+	if err != nil {
+		return info, err
+	}
+	info.Path = path
+	// codeql[go/path-injection] GeoData paths are constrained by
+	// validatedGeoDataPath to geofile/ next to the root-owned HR Neo config.
 	st, err := os.Stat(path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -408,6 +418,8 @@ func geoDataFileInfo(kind openapi.GeoDataKind, path string, configured bool) (op
 	mod := st.ModTime().UTC()
 	info.Size = &size
 	info.Modified = &mod
+	// codeql[go/path-injection] GeoData paths are constrained by
+	// validatedGeoDataPath to geofile/ next to the root-owned HR Neo config.
 	data, err := os.ReadFile(path) // #nosec G304 -- configured geodata paths come from root-owned HR Neo configuration
 	if err == nil {
 		sum := sha256Hex(data)
@@ -416,42 +428,44 @@ func geoDataFileInfo(kind openapi.GeoDataKind, path string, configured bool) (op
 	return info, nil
 }
 
-func (s *Server) validateGeoDataRequest(kind openapi.GeoDataKind, path string) error {
+func (s *Server) validatedGeoDataPath(kind openapi.GeoDataKind, path string) (string, error) {
 	if !kind.Valid() {
-		return fmt.Errorf("kind must be one of: geoip, geosite")
+		return "", fmt.Errorf("kind must be one of: geoip, geosite")
 	}
 	if err := validatePathValue(path); err != nil {
-		return err
+		return "", err
 	}
 	base := filepath.Join(filepath.Dir(s.cfg.HRNeoConf), "geofile")
 	base, err := filepath.Abs(base)
 	if err != nil {
-		return err
+		return "", err
 	}
 	path, err = filepath.Abs(path)
 	if err != nil {
-		return err
+		return "", err
 	}
 	rel, err := filepath.Rel(base, path)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-		return fmt.Errorf("geodata path must be inside %s", base)
+		return "", fmt.Errorf("geodata path must be inside %s", base)
 	}
-	return nil
+	return path, nil
 }
 
-func downloadGeoData(ctx context.Context, rawURL string) ([]byte, error) {
-	if err := validateGeoDataURL(rawURL); err != nil {
-		return nil, err
-	}
+type validatedGeoDataURL string
+
+func downloadGeoData(ctx context.Context, rawURL validatedGeoDataURL) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, string(rawURL), nil)
 	if err != nil {
 		return nil, err
 	}
+	// codeql[go/request-forgery] The URL is accepted only after
+	// validateGeoDataURL, redirects are revalidated, proxy use is disabled,
+	// and the transport dials only public IP addresses.
 	resp, err := geoDataHTTPClient.Do(req)
 	if err != nil {
 		return nil, err
@@ -477,29 +491,30 @@ func newGeoDataHTTPClient() *http.Client {
 	return &http.Client{
 		Transport: transport,
 		CheckRedirect: func(req *http.Request, _ []*http.Request) error {
-			return validateGeoDataURL(req.URL.String())
+			_, err := validateGeoDataURL(req.URL.String())
+			return err
 		},
 	}
 }
 
-func validateGeoDataURL(rawURL string) error {
+func validateGeoDataURL(rawURL string) (validatedGeoDataURL, error) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if u.Scheme != "http" && u.Scheme != "https" {
-		return fmt.Errorf("url scheme must be http or https")
+		return "", fmt.Errorf("url scheme must be http or https")
 	}
 	if u.Hostname() == "" {
-		return fmt.Errorf("url host must not be empty")
+		return "", fmt.Errorf("url host must not be empty")
 	}
 	if u.User != nil {
-		return fmt.Errorf("url userinfo is not allowed")
+		return "", fmt.Errorf("url userinfo is not allowed")
 	}
 	if addr, err := netip.ParseAddr(u.Hostname()); err == nil && !isPublicAddress(addr) {
-		return fmt.Errorf("url host must resolve to a public address")
+		return "", fmt.Errorf("url host must resolve to a public address")
 	}
-	return nil
+	return validatedGeoDataURL(u.String()), nil
 }
 
 func dialPublicAddress(ctx context.Context, network, address string) (net.Conn, error) {

@@ -88,6 +88,8 @@ func (s *Server) restoreBackup(id string) ([]string, error) {
 		return nil, fmt.Errorf("invalid backup id")
 	}
 	dir := filepath.Join(s.cfg.BackupDir, id)
+	// codeql[go/path-injection] id must round-trip through sanitizeBackupID,
+	// so the backup path stays below the configured backup directory.
 	if st, err := os.Stat(dir); err != nil {
 		return nil, err
 	} else if !st.IsDir() {
@@ -102,6 +104,8 @@ func (s *Server) restoreBackup(id string) ([]string, error) {
 	var restored []string
 	for name, target := range targets {
 		src := filepath.Join(dir, name)
+		// codeql[go/path-injection] Backup id is sanitized and filename comes
+		// from the fixed targets allowlist above.
 		data, err := os.ReadFile(src) // #nosec G304 -- backup ID is sanitized and filename comes from a fixed allowlist
 		if err != nil {
 			if os.IsNotExist(err) {
