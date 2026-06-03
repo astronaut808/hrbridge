@@ -463,9 +463,10 @@ func downloadGeoData(ctx context.Context, rawURL validatedGeoDataURL) ([]byte, e
 	if err != nil {
 		return nil, err
 	}
-	// codeql[go/request-forgery] The URL is accepted only after
-	// validateGeoDataURL, redirects are revalidated, proxy use is disabled,
-	// and the transport dials only public IP addresses.
+	// The URL is accepted only after validateGeoDataURL, redirects are
+	// revalidated, proxy use is disabled, and the transport dials only public
+	// IP addresses.
+	// lgtm[go/request-forgery]
 	resp, err := geoDataHTTPClient.Do(req)
 	if err != nil {
 		return nil, err
