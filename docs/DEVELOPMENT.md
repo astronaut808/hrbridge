@@ -2,7 +2,7 @@
 
 ## Требования
 
-- Go `1.26.3` или новее в ветке `1.26.x`.
+- Go `1.26.4` или новее в ветке `1.26.x`.
 - `make`, `ar`, `tar`, `gzip` и `shasum` или `sha256sum`.
 - `curl` и `jq` для smoke-тестов.
 
@@ -14,12 +14,13 @@
 | `make fmt-check` | Проверить форматирование Go-кода через `gofmt` |
 | `make test` | Запустить unit-тесты |
 | `make lint` | Запустить `golangci-lint v2.12.2` |
-| `make ci` | Выполнить codegen, fmt-check, тесты, native build и shell-check |
+| `make ci` | Выполнить codegen, fmt-check, тесты, native build, shell-check и package-check |
 | `make smoke-local` | Проверить локальный HTTP API |
 | `make aarch64` | Собрать Linux ARM64 бинарь |
 | `make mipsel` | Собрать Linux MIPS little-endian бинарь |
 | `make mips` | Собрать Linux MIPS big-endian бинарь |
 | `make package` | Собрать IPK для всех архитектур |
+| `make package-check` | Собрать IPK и проверить opkg-совместимый tar/gzip формат |
 | `make feed` | Собрать IPK и статический opkg-feed |
 
 ## Артефакты
