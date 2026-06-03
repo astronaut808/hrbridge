@@ -47,7 +47,7 @@ package-check: package
 		gzip -dc "$$package" | tar -tf - | grep -qx './debian-binary'; \
 		gzip -dc "$$package" | tar -tf - | grep -qx './control.tar.gz'; \
 		gzip -dc "$$package" | tar -tf - | grep -qx './data.tar.gz'; \
-		gzip -dc "$$package" | tar -xzO ./control.tar.gz | tar -xzO ./control | grep -qx 'Package: $(PROJECT)'; \
+		gzip -dc "$$package" | tar -xO ./control.tar.gz | tar -xzO ./control | grep -qx 'Package: $(PROJECT)'; \
 	done
 
 smoke-local: native
