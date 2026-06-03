@@ -50,6 +50,26 @@ opkg upgrade hrbridge
 /opt/etc/init.d/S99hrbridge restart
 ```
 
+## Полное удаление
+
+Эти команды удаляют только HydraBridge. Конфиги и данные HR Neo в
+`/opt/etc/HydraRoute` не удаляются.
+
+На роутере:
+
+```sh
+/opt/etc/init.d/S99hrbridge stop 2>/dev/null || true
+opkg remove hrbridge
+rm -rf /opt/etc/hrbridge
+rm -f /opt/etc/init.d/S99hrbridge
+rm -f /opt/var/log/hrbridge-audit.log
+sed -i '/^src\/gz hrbridge /d' /opt/etc/opkg/customfeeds.conf
+opkg update
+```
+
+Если нужно оставить feed для будущей установки, не выполняйте строку с
+`sed -i`.
+
 ## Получение токена
 
 Установщик выводит bearer token после первого запуска. Повторно получить его

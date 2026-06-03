@@ -28,6 +28,26 @@ opkg upgrade hrbridge
 /opt/etc/init.d/S99hrbridge restart
 ```
 
+## Full Removal
+
+These commands remove HydraBridge only. HR Neo configuration and data under
+`/opt/etc/HydraRoute` are left intact.
+
+Run on the router:
+
+```sh
+/opt/etc/init.d/S99hrbridge stop 2>/dev/null || true
+opkg remove hrbridge
+rm -rf /opt/etc/hrbridge
+rm -f /opt/etc/init.d/S99hrbridge
+rm -f /opt/var/log/hrbridge-audit.log
+sed -i '/^src\/gz hrbridge /d' /opt/etc/opkg/customfeeds.conf
+opkg update
+```
+
+Skip the `sed -i` line if you want to keep the feed configured for future
+installs.
+
 ## Read the token
 
 ```sh
