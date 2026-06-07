@@ -43,6 +43,7 @@ func (s *Server) handleVersion(w http.ResponseWriter, r *http.Request) {
 			"overview.read",
 			"config.revision",
 			"config.patch.rules",
+			"config.patch.ruleGroups",
 			"views.grouped",
 			"runtime.firewall",
 			"runtime.ipsets",
