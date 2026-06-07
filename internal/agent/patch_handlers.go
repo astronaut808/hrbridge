@@ -38,6 +38,11 @@ func (s *Server) handlePatchDomainRule(add bool) http.HandlerFunc {
 		}
 		content, err := patchDomainConfigText(string(data), target, req, add)
 		if err != nil {
+			var duplicate duplicateRuleGroupError
+			if errors.As(err, &duplicate) {
+				writeError(w, http.StatusConflict, err.Error())
+				return
+			}
 			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
@@ -69,6 +74,11 @@ func (s *Server) handlePatchCIDRRule(add bool) http.HandlerFunc {
 		}
 		content, err := patchCIDRConfigText(string(data), target, req, add)
 		if err != nil {
+			var duplicate duplicateRuleGroupError
+			if errors.As(err, &duplicate) {
+				writeError(w, http.StatusConflict, err.Error())
+				return
+			}
 			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
@@ -86,6 +96,10 @@ func decodeDomainRulePatchRequest(r *http.Request, add bool) (openapi.DomainRule
 		req.Kind = openapi.DomainRulePatchRequestKind(r.URL.Query().Get("kind"))
 		req.Value = r.URL.Query().Get("value")
 		req.Apply = apply
+		if r.URL.Query().Has("comment") {
+			comment := r.URL.Query().Get("comment")
+			req.Comment = &comment
+		}
 		return req, nil
 	}
 	return req, decodeJSONBody(r, &req)
@@ -101,6 +115,10 @@ func decodeCIDRRulePatchRequest(r *http.Request, add bool) (openapi.CIDRRulePatc
 		req.Kind = openapi.CIDRRulePatchRequestKind(r.URL.Query().Get("kind"))
 		req.Value = r.URL.Query().Get("value")
 		req.Apply = apply
+		if r.URL.Query().Has("comment") {
+			comment := r.URL.Query().Get("comment")
+			req.Comment = &comment
+		}
 		return req, nil
 	}
 	return req, decodeJSONBody(r, &req)

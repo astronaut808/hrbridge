@@ -634,6 +634,10 @@ paths:
       tags: [Config]
       operationId: addDomainTargetRule
       summary: Add one domain or GeoSite rule to a target
+      description: |
+        When `comment` is provided, HydraBridge adds the rule to the matching
+        `##comment` group for the target. If the group does not exist, a new
+        HR Neo comment group is created without changing the config format.
       requestBody:
         required: true
         content:
@@ -683,6 +687,12 @@ paths:
           schema:
             type: boolean
             default: false
+        - name: comment
+          in: query
+          required: false
+          description: Restrict removal to a specific `##comment` group.
+          schema:
+            type: string
       responses:
         "200":
           description: Rule removed
@@ -716,6 +726,10 @@ paths:
       tags: [Config]
       operationId: addCidrTargetRule
       summary: Add one CIDR or GeoIP rule to a target
+      description: |
+        When `comment` is provided, HydraBridge adds the rule to the matching
+        `##comment` group for the target. If the group does not exist, a new
+        HR Neo comment group is created without changing the config format.
       requestBody:
         required: true
         content:
@@ -765,6 +779,12 @@ paths:
           schema:
             type: boolean
             default: false
+        - name: comment
+          in: query
+          required: false
+          description: Restrict removal to a specific `##comment` group.
+          schema:
+            type: string
       responses:
         "200":
           description: Rule removed
@@ -1990,6 +2010,9 @@ components:
           enum: [domain, geosite]
         value:
           type: string
+        comment:
+          type: string
+          description: Optional HR Neo `##comment` group to add the rule into.
         apply:
           type: boolean
           default: false
@@ -2050,6 +2073,9 @@ components:
           enum: [cidr, geoip]
         value:
           type: string
+        comment:
+          type: string
+          description: Optional HR Neo `##comment` group to add the rule into.
         apply:
           type: boolean
           default: false

@@ -675,9 +675,12 @@ type CIDRConfigResponse struct {
 
 // CIDRRulePatchRequest defines model for CIDRRulePatchRequest.
 type CIDRRulePatchRequest struct {
-	Apply *bool                    `json:"apply,omitempty"`
-	Kind  CIDRRulePatchRequestKind `json:"kind"`
-	Value string                   `json:"value"`
+	Apply *bool `json:"apply,omitempty"`
+
+	// Comment Optional HR Neo `##comment` group to add the rule into.
+	Comment *string                  `json:"comment,omitempty"`
+	Kind    CIDRRulePatchRequestKind `json:"kind"`
+	Value   string                   `json:"value"`
 }
 
 // CIDRRulePatchRequestKind defines model for CIDRRulePatchRequest.Kind.
@@ -786,9 +789,12 @@ type DomainDiagnosticResponseMatchType string
 
 // DomainRulePatchRequest defines model for DomainRulePatchRequest.
 type DomainRulePatchRequest struct {
-	Apply *bool                      `json:"apply,omitempty"`
-	Kind  DomainRulePatchRequestKind `json:"kind"`
-	Value string                     `json:"value"`
+	Apply *bool `json:"apply,omitempty"`
+
+	// Comment Optional HR Neo `##comment` group to add the rule into.
+	Comment *string                    `json:"comment,omitempty"`
+	Kind    DomainRulePatchRequestKind `json:"kind"`
+	Value   string                     `json:"value"`
 }
 
 // DomainRulePatchRequestKind defines model for DomainRulePatchRequest.Kind.
@@ -1389,6 +1395,9 @@ type DeleteCidrTargetRuleParams struct {
 	Kind  DeleteCidrTargetRuleParamsKind `form:"kind" json:"kind"`
 	Value string                         `form:"value" json:"value"`
 	Apply *bool                          `form:"apply,omitempty" json:"apply,omitempty"`
+
+	// Comment Restrict removal to a specific `##comment` group.
+	Comment *string `form:"comment,omitempty" json:"comment,omitempty"`
 }
 
 // DeleteCidrTargetRuleParamsKind defines parameters for DeleteCidrTargetRule.
@@ -1399,6 +1408,9 @@ type DeleteDomainTargetRuleParams struct {
 	Kind  DeleteDomainTargetRuleParamsKind `form:"kind" json:"kind"`
 	Value string                           `form:"value" json:"value"`
 	Apply *bool                            `form:"apply,omitempty" json:"apply,omitempty"`
+
+	// Comment Restrict removal to a specific `##comment` group.
+	Comment *string `form:"comment,omitempty" json:"comment,omitempty"`
 }
 
 // DeleteDomainTargetRuleParamsKind defines parameters for DeleteDomainTargetRule.
