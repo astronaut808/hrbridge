@@ -1,19 +1,37 @@
 package agent
 
 import (
+	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/astronaut808/hrbridge/internal/openapi"
 )
+
+type duplicateRuleGroupError struct {
+	group string
+}
+
+func (e duplicateRuleGroupError) Error() string {
+	if e.group == "" {
+		return "rule already exists in ungrouped rules"
+	}
+	return fmt.Sprintf("rule already exists in group %q", e.group)
+}
 
 func patchDomainConfigText(content, target string, req openapi.DomainRulePatchRequest, add bool) (string, error) {
 	token, err := domainPatchToken(req)
 	if err != nil {
 		return "", err
 	}
+	comment, err := patchComment(req.Comment)
+	if err != nil {
+		return "", err
+	}
 	lines, trailing := splitConfigLines(content)
 	match := func(value string) bool { return strings.EqualFold(strings.TrimSpace(value), token) }
 	firstTarget := -1
+	firstGroupTarget := -1
 	found := false
 	for i := 0; i < len(lines); i++ {
 		line := lines[i]
@@ -24,6 +42,10 @@ func patchDomainConfigText(content, target string, req openapi.DomainRulePatchRe
 		if firstTarget < 0 {
 			firstTarget = i
 		}
+		inRequestedGroup := comment == nil || commentMatchesLineGroup(lines, i, *comment)
+		if inRequestedGroup && firstGroupTarget < 0 {
+			firstGroupTarget = i
+		}
 		var kept []string
 		lineFound := false
 		for _, entry := range strings.Split(left, ",") {
@@ -32,6 +54,13 @@ func patchDomainConfigText(content, target string, req openapi.DomainRulePatchRe
 				continue
 			}
 			if match(trimmed) {
+				if add && comment != nil && !inRequestedGroup {
+					return "", duplicateRuleGroupError{group: commentGroupName(lines, i)}
+				}
+				if comment != nil && !inRequestedGroup {
+					kept = append(kept, entry)
+					continue
+				}
 				found = true
 				lineFound = true
 				if !add {
@@ -42,18 +71,26 @@ func patchDomainConfigText(content, target string, req openapi.DomainRulePatchRe
 		}
 		if !add && lineFound {
 			if len(kept) == 0 {
-				lines = append(lines[:i], lines[i+1:]...)
-				i--
+				start := domainLineBlockStart(lines, i)
+				lines = append(lines[:start], lines[i+1:]...)
+				i = start - 1
 				continue
 			}
 			lines[i] = strings.Join(kept, ",") + line[strings.LastIndex(line, "/"):]
 		}
 	}
 	if add && !found {
-		if firstTarget >= 0 {
-			slash := strings.LastIndex(lines[firstTarget], "/")
-			lines[firstTarget] = lines[firstTarget][:slash] + "," + token + lines[firstTarget][slash:]
+		targetLine := firstTarget
+		if comment != nil {
+			targetLine = firstGroupTarget
+		}
+		if targetLine >= 0 {
+			slash := strings.LastIndex(lines[targetLine], "/")
+			lines[targetLine] = lines[targetLine][:slash] + "," + token + lines[targetLine][slash:]
 		} else {
+			if comment != nil {
+				lines = append(lines, "##"+*comment)
+			}
 			lines = append(lines, token+"/"+target)
 		}
 	}
@@ -65,36 +102,54 @@ func patchCIDRConfigText(content, target string, req openapi.CIDRRulePatchReques
 	if err != nil {
 		return "", err
 	}
+	comment, err := patchComment(req.Comment)
+	if err != nil {
+		return "", err
+	}
 	lines, trailing := splitConfigLines(content)
 	activeTarget := ""
+	activeGroupMatches := false
+	activeHeaderIndex := -1
 	insertAt := -1
 	found := false
 	for i := 0; i < len(lines); i++ {
 		line := strings.TrimSpace(lines[i])
 		switch {
 		case line == "" || strings.HasPrefix(line, "##"):
-			if activeTarget == target && insertAt < 0 {
+			if activeTarget == target && activeGroupMatches && insertAt < 0 {
 				insertAt = i
 			}
 			activeTarget = ""
+			activeGroupMatches = false
+			activeHeaderIndex = -1
 		case strings.HasPrefix(line, "#/"):
-			if activeTarget == target && insertAt < 0 {
+			if activeTarget == target && activeGroupMatches && insertAt < 0 {
 				insertAt = i
 			}
 			activeTarget = ""
+			activeGroupMatches = false
+			activeHeaderIndex = -1
 		case strings.HasPrefix(line, "/"):
-			if activeTarget == target && insertAt < 0 {
+			if activeTarget == target && activeGroupMatches && insertAt < 0 {
 				insertAt = i
 			}
 			activeTarget = strings.TrimSpace(strings.TrimPrefix(line, "/"))
+			activeGroupMatches = comment == nil || commentMatchesLineGroup(lines, i, *comment)
+			activeHeaderIndex = i
 		case activeTarget == target && strings.EqualFold(line, token):
+			if add && comment != nil && !activeGroupMatches {
+				return "", duplicateRuleGroupError{group: commentGroupName(lines, activeHeaderIndex)}
+			}
+			if comment != nil && !activeGroupMatches {
+				continue
+			}
 			found = true
 			if !add {
 				lines = append(lines[:i], lines[i+1:]...)
 				i--
 			}
 		}
-		if activeTarget == target {
+		if activeTarget == target && activeGroupMatches {
 			insertAt = i + 1
 		}
 	}
@@ -107,6 +162,9 @@ func patchCIDRConfigText(content, target string, req openapi.CIDRRulePatchReques
 			copy(lines[insertAt+1:], lines[insertAt:])
 			lines[insertAt] = token
 		} else {
+			if comment != nil {
+				lines = append(lines, "##"+*comment)
+			}
 			lines = append(lines, "/"+target, token)
 		}
 	}
@@ -131,11 +189,80 @@ func removeEmptyCIDRBlocks(lines []string, target string) []string {
 			i = end
 			continue
 		}
-		start := i
+		start := cidrBlockStart(lines, i)
 		lines = append(lines[:start], lines[end:]...)
 		i = start
 	}
 	return lines
+}
+
+func domainLineBlockStart(lines []string, lineIndex int) int {
+	return commentBlockStart(lines, lineIndex)
+}
+
+func cidrBlockStart(lines []string, lineIndex int) int {
+	return commentBlockStart(lines, lineIndex)
+}
+
+func commentBlockStart(lines []string, lineIndex int) int {
+	start := lineIndex
+	for start > 0 {
+		prev := strings.TrimSpace(lines[start-1])
+		if !strings.HasPrefix(prev, "##") {
+			break
+		}
+		start--
+	}
+	return start
+}
+
+func commentMatchesLineGroup(lines []string, lineIndex int, comment string) bool {
+	var comments []string
+	for i := lineIndex - 1; i >= 0; i-- {
+		line := strings.TrimSpace(lines[i])
+		if !strings.HasPrefix(line, "##") {
+			break
+		}
+		item := strings.TrimSpace(strings.TrimPrefix(line, "##"))
+		if item != "" {
+			comments = append([]string{item}, comments...)
+		}
+	}
+	for _, item := range comments {
+		if strings.EqualFold(strings.TrimSpace(item), comment) {
+			return true
+		}
+	}
+	return strings.EqualFold(strings.Join(comments, "\n"), comment)
+}
+
+func commentGroupName(lines []string, lineIndex int) string {
+	var comments []string
+	for i := lineIndex - 1; i >= 0; i-- {
+		line := strings.TrimSpace(lines[i])
+		if !strings.HasPrefix(line, "##") {
+			break
+		}
+		item := strings.TrimSpace(strings.TrimPrefix(line, "##"))
+		if item != "" {
+			comments = append([]string{item}, comments...)
+		}
+	}
+	return strings.Join(comments, "\n")
+}
+
+func patchComment(value *string) (*string, error) {
+	if value == nil {
+		return nil, nil
+	}
+	comment := strings.TrimSpace(*value)
+	if comment == "" {
+		return nil, nil
+	}
+	if hasLineBreak(comment) {
+		return nil, errors.New("comment must not contain line breaks")
+	}
+	return &comment, nil
 }
 
 func domainPatchToken(req openapi.DomainRulePatchRequest) (string, error) {

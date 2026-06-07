@@ -102,6 +102,79 @@ func TestPatchDomainAndCIDRRules(t *testing.T) {
 	}
 }
 
+func TestPatchDomainRuleCanTargetCommentGroup(t *testing.T) {
+	srv, cfg := testServer(t)
+	comment := "Music"
+	body, _ := json.Marshal(openapi.DomainRulePatchRequest{
+		Kind:    openapi.DomainRulePatchRequestKindDomain,
+		Value:   "spotify.com",
+		Comment: &comment,
+	})
+	rr := perform(srv, "POST", "/api/v1/config/domains/targets/HydraRoute/rules", "test-token", body)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("grouped domain add status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	data, err := os.ReadFile(cfg.DomainConf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "##Music\nspotify.com/HydraRoute") {
+		t.Fatalf("grouped domain patch not persisted: %q", string(data))
+	}
+
+	rr = perform(srv, "DELETE", "/api/v1/config/domains/targets/HydraRoute/rules?kind=domain&value=spotify.com&comment=Music", "test-token", nil)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("grouped domain delete status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	data, err = os.ReadFile(cfg.DomainConf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(data), "spotify.com") || strings.Contains(string(data), "##Music") {
+		t.Fatalf("grouped domain patch left stale data: %q", string(data))
+	}
+}
+
+func TestPatchDomainRuleRejectsDuplicateInAnotherCommentGroup(t *testing.T) {
+	srv, cfg := testServer(t)
+	if err := os.WriteFile(cfg.DomainConf, []byte("##AI\nopenai.com/HydraRoute\n\n##Music\nsoundcloud.com/HydraRoute\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	comment := "Music"
+	body, _ := json.Marshal(openapi.DomainRulePatchRequest{
+		Kind:    openapi.DomainRulePatchRequestKindDomain,
+		Value:   "openai.com",
+		Comment: &comment,
+	})
+	rr := perform(srv, "POST", "/api/v1/config/domains/targets/HydraRoute/rules", "test-token", body)
+	if rr.Code != http.StatusConflict {
+		t.Fatalf("duplicate grouped domain status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), `group \"AI\"`) {
+		t.Fatalf("unexpected duplicate response: %s", rr.Body.String())
+	}
+}
+
+func TestPatchCIDRRuleRejectsDuplicateInAnotherCommentGroup(t *testing.T) {
+	srv, cfg := testServer(t)
+	if err := os.WriteFile(cfg.CIDRList, []byte("##Cloudflare\n/HydraRoute\n1.1.1.1/32\n\n##Telegram\n/HydraRoute\ngeoip:telegram\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	comment := "Telegram"
+	body, _ := json.Marshal(openapi.CIDRRulePatchRequest{
+		Kind:    openapi.CIDRRulePatchRequestKindCidr,
+		Value:   "1.1.1.1/32",
+		Comment: &comment,
+	})
+	rr := perform(srv, "POST", "/api/v1/config/cidr/targets/HydraRoute/rules", "test-token", body)
+	if rr.Code != http.StatusConflict {
+		t.Fatalf("duplicate grouped CIDR status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), `group \"Cloudflare\"`) {
+		t.Fatalf("unexpected duplicate response: %s", rr.Body.String())
+	}
+}
+
 func TestDeleteRuleAcceptsLegacyJSONBody(t *testing.T) {
 	srv, _ := testServer(t)
 

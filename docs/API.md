@@ -37,13 +37,36 @@ GET|PUT /api/v1/config/cidr/structured
 
 ```text
 POST   /api/v1/config/domains/targets/{target}/rules
-DELETE /api/v1/config/domains/targets/{target}/rules?kind={kind}&value={value}
+DELETE /api/v1/config/domains/targets/{target}/rules?kind={kind}&value={value}[&comment={comment}]
 POST   /api/v1/config/cidr/targets/{target}/rules
-DELETE /api/v1/config/cidr/targets/{target}/rules?kind={kind}&value={value}
+DELETE /api/v1/config/cidr/targets/{target}/rules?kind={kind}&value={value}[&comment={comment}]
 ```
 
 `POST` принимает JSON body. `DELETE` использует query-параметры, совместимые с
 OpenAPI 3.0 и Swagger Editor.
+
+Для сохранения удобной структуры HR Neo можно передать `comment`. Это имя
+существующей или новой группы `##...` в `domain.conf` или `ip.list`; формат
+файлов HR Neo при этом не меняется.
+
+Пример добавления домена в группу `##Music`:
+
+```json
+{
+  "kind": "domain",
+  "value": "spotify.com",
+  "comment": "Music",
+  "apply": false
+}
+```
+
+Если `##Music` уже есть у target `Finland`, домен будет добавлен в этот блок.
+Если такой группы нет, HydraBridge создаст новый блок:
+
+```text
+##Music
+spotify.com/Finland
+```
 
 Чтение конфигов возвращает `ETag` и `X-Config-Revision`. Для записи передавайте
 `If-Match`, чтобы не перезаписать изменения другого клиента.

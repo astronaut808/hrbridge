@@ -26,9 +26,13 @@ Rule creation uses a JSON request body. Rule deletion uses OpenAPI 3.0
 compatible `kind` and `value` query parameters:
 
 ```text
-DELETE /config/domains/targets/{target}/rules?kind={kind}&value={value}
-DELETE /config/cidr/targets/{target}/rules?kind={kind}&value={value}
+DELETE /config/domains/targets/{target}/rules?kind={kind}&value={value}[&comment={comment}]
+DELETE /config/cidr/targets/{target}/rules?kind={kind}&value={value}[&comment={comment}]
 ```
+
+`comment` is optional and maps to an HR Neo `##...` group. When it is provided
+on add, HydraBridge appends the rule to the matching group or creates a new
+group without changing HR Neo config formats.
 
 GeoData uploads are limited to the `geofile` directory next to `hrneo.conf`.
 GeoData downloads accept HTTP(S) sources that resolve to public IP addresses.

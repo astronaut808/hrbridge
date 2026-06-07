@@ -15,6 +15,7 @@ TMP=$(mktemp -d "${TMPDIR:-/tmp}/hrbridge-router-smoke.XXXXXX")
 DOMAIN="hrbridge-router-smoke-$$.test"
 STALE_DOMAIN="stale-$DOMAIN"
 CIDR="203.0.113.$(($$ % 200 + 1))/32"
+GROUP_COMMENT="HRBridgeSmokeGroup$$"
 POLICY="HRBridgeSmoke$$"
 DOMAIN_ADDED=
 STALE_DOMAIN_ADDED=
@@ -68,17 +69,35 @@ delete_rule() {
 	kind=$2
 	value=$3
 	revision=${4:-}
+	comment=${5:-}
 	if [ -n "$revision" ]; then
-		curl -fsS -X DELETE \
-			-H "Authorization: Bearer $TOKEN" \
-			-H "If-Match: $revision" \
-			--get --data-urlencode "kind=$kind" --data-urlencode "value=$value" \
-			"$BASE_URL$path"
+		if [ -n "$comment" ]; then
+			curl -fsS -X DELETE \
+				-H "Authorization: Bearer $TOKEN" \
+				-H "If-Match: $revision" \
+				--get --data-urlencode "kind=$kind" --data-urlencode "value=$value" \
+				--data-urlencode "comment=$comment" \
+				"$BASE_URL$path"
+		else
+			curl -fsS -X DELETE \
+				-H "Authorization: Bearer $TOKEN" \
+				-H "If-Match: $revision" \
+				--get --data-urlencode "kind=$kind" --data-urlencode "value=$value" \
+				"$BASE_URL$path"
+		fi
 	else
-		curl -fsS -X DELETE \
-			-H "Authorization: Bearer $TOKEN" \
-			--get --data-urlencode "kind=$kind" --data-urlencode "value=$value" \
-			"$BASE_URL$path"
+		if [ -n "$comment" ]; then
+			curl -fsS -X DELETE \
+				-H "Authorization: Bearer $TOKEN" \
+				--get --data-urlencode "kind=$kind" --data-urlencode "value=$value" \
+				--data-urlencode "comment=$comment" \
+				"$BASE_URL$path"
+		else
+			curl -fsS -X DELETE \
+				-H "Authorization: Bearer $TOKEN" \
+				--get --data-urlencode "kind=$kind" --data-urlencode "value=$value" \
+				"$BASE_URL$path"
+		fi
 	fi
 }
 
@@ -91,6 +110,10 @@ revision() {
 
 rule_body() {
 	jq -cn --arg kind "$1" --arg value "$2" '{kind:$kind,value:$value}'
+}
+
+group_rule_body() {
+	jq -cn --arg kind "$1" --arg value "$2" --arg comment "$3" '{kind:$kind,value:$value,comment:$comment}'
 }
 
 delete_rule_best_effort() {
@@ -232,6 +255,23 @@ if [ "$MODE" = write ]; then
 	cmp -s "$TMP/domain.before" "$TMP/domain.after" \
 		|| fail_roundtrip domains "$TMP/domain.before" "$TMP/domain.after"
 
+	rev=$(revision domains)
+	DOMAIN_ADDED=1
+	json_request POST "/config/domains/targets/$TARGET/rules" \
+		"$(group_rule_body domain "$DOMAIN" "$GROUP_COMMENT")" "$rev" | jq -e '.saved == true and .applied == false' >/dev/null
+	rev_after_group_add=$(revision domains)
+	json_get /config/domains | jq -j '.content' >"$TMP/domain.group"
+	grep -F "##$GROUP_COMMENT" "$TMP/domain.group" >/dev/null \
+		|| fail "grouped domain write did not create comment group"
+	grep -F "$DOMAIN/$TARGET" "$TMP/domain.group" >/dev/null \
+		|| fail "grouped domain write did not create rule"
+	delete_rule "/config/domains/targets/$TARGET/rules" \
+		domain "$DOMAIN" "$rev_after_group_add" "$GROUP_COMMENT" | jq -e '.saved == true' >/dev/null
+	DOMAIN_ADDED=
+	json_get /config/domains | jq -j '.content' >"$TMP/domain.after_group"
+	cmp -s "$TMP/domain.before" "$TMP/domain.after_group" \
+		|| fail_roundtrip domains "$TMP/domain.before" "$TMP/domain.after_group"
+
 	rev=$(revision cidr)
 	CIDR_ADDED=1
 	json_request POST "/config/cidr/targets/$TARGET/rules" \
@@ -243,6 +283,23 @@ if [ "$MODE" = write ]; then
 	json_get /config/cidr | jq -j '.content' >"$TMP/cidr.after"
 	cmp -s "$TMP/cidr.before" "$TMP/cidr.after" \
 		|| fail_roundtrip cidr "$TMP/cidr.before" "$TMP/cidr.after"
+
+	rev=$(revision cidr)
+	CIDR_ADDED=1
+	json_request POST "/config/cidr/targets/$TARGET/rules" \
+		"$(group_rule_body cidr "$CIDR" "$GROUP_COMMENT")" "$rev" | jq -e '.saved == true and .applied == false' >/dev/null
+	rev_after_group_add=$(revision cidr)
+	json_get /config/cidr | jq -j '.content' >"$TMP/cidr.group"
+	grep -F "##$GROUP_COMMENT" "$TMP/cidr.group" >/dev/null \
+		|| fail "grouped CIDR write did not create comment group"
+	grep -F "$CIDR" "$TMP/cidr.group" >/dev/null \
+		|| fail "grouped CIDR write did not create rule"
+	delete_rule "/config/cidr/targets/$TARGET/rules" \
+		cidr "$CIDR" "$rev_after_group_add" "$GROUP_COMMENT" | jq -e '.saved == true' >/dev/null
+	CIDR_ADDED=
+	json_get /config/cidr | jq -j '.content' >"$TMP/cidr.after_group"
+	cmp -s "$TMP/cidr.before" "$TMP/cidr.after_group" \
+		|| fail_roundtrip cidr "$TMP/cidr.before" "$TMP/cidr.after_group"
 
 	printf '  - manual backup and audit\n'
 	json_request POST /backups '{}' | jq -e '.id | length > 0' >/dev/null
