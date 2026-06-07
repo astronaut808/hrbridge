@@ -191,7 +191,8 @@ curl -fsS "$BASE_URL/health" | jq -e '.ok == true' >/dev/null
 printf '  - version and capability boundary\n'
 json_get /version | jq -e '
 	.apiVersion == "v1" and
-	(.capabilities | index("diagnostics.ip.runtimeEvidence")) != null
+	(.capabilities | index("diagnostics.ip.runtimeEvidence")) != null and
+	(.capabilities | index("config.patch.ruleGroups")) != null
 ' >/dev/null
 printf '  - status and overview\n'
 json_get /status | jq -e '.hrneo.installed == true and .hrneo.running == true' >/dev/null

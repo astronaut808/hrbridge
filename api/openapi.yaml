@@ -1527,6 +1527,8 @@ components:
             type: string
           example:
             - config.raw
+            - config.patch.rules
+            - config.patch.ruleGroups
             - service.control
             - backup.create
             - logs.read

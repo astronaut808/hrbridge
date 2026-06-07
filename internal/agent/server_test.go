@@ -79,6 +79,21 @@ func TestAuthRequired(t *testing.T) {
 	}
 }
 
+func TestVersionAdvertisesRuleGroupCapability(t *testing.T) {
+	srv, _ := testServer(t)
+	rr := perform(srv, "GET", "/api/v1/version", "test-token", nil)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	var resp openapi.VersionResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatal(err)
+	}
+	if !containsString(resp.Capabilities, "config.patch.ruleGroups") {
+		t.Fatalf("missing rule group capability: %#v", resp.Capabilities)
+	}
+}
+
 func TestCORSPreflight(t *testing.T) {
 	dir := t.TempDir()
 	cfg := DefaultConfig()
